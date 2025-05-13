@@ -42,8 +42,11 @@ const User = sequelize.define('User', {
     }
   },
   role: {
-    type: DataTypes.ENUM('user', 'driver', 'admin'),
-    defaultValue: 'user'
+    type: DataTypes.STRING,
+    defaultValue: 'user',
+    validate: {
+      isIn: [['user', 'driver', 'admin']]
+    }
   },
   passwordChangedAt: {
     type: DataTypes.DATE,

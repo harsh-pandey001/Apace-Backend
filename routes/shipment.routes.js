@@ -5,7 +5,11 @@ const { protect, restrictTo } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Protect all routes
+// Public routes (no auth required)
+// Track a shipment by tracking number
+router.get('/track/:trackingNumber', shipmentController.trackShipment);
+
+// Protect all other routes
 router.use(protect);
 
 // Shipment validation rules

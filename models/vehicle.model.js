@@ -13,8 +13,11 @@ const Vehicle = sequelize.define('Vehicle', {
     unique: true
   },
   type: {
-    type: DataTypes.ENUM('car', 'van', 'truck', 'motorcycle'),
-    allowNull: false
+    type: DataTypes.STRING,
+    allowNull: false,
+    validate: {
+      isIn: [['car', 'van', 'truck', 'motorcycle']]
+    }
   },
   model: {
     type: DataTypes.STRING,
@@ -42,8 +45,11 @@ const Vehicle = sequelize.define('Vehicle', {
     allowNull: true
   },
   status: {
-    type: DataTypes.ENUM('available', 'in_use', 'maintenance', 'out_of_service'),
-    defaultValue: 'available'
+    type: DataTypes.STRING,
+    defaultValue: 'available',
+    validate: {
+      isIn: [['available', 'in_use', 'maintenance', 'out_of_service']]
+    }
   },
   driverId: {
     type: DataTypes.UUID,

@@ -13,15 +13,11 @@ const Shipment = sequelize.define('Shipment', {
     unique: true
   },
   status: {
-    type: DataTypes.ENUM(
-      'pending', 
-      'in_transit', 
-      'out_for_delivery', 
-      'delivered', 
-      'failed', 
-      'cancelled'
-    ),
-    defaultValue: 'pending'
+    type: DataTypes.STRING,
+    defaultValue: 'pending',
+    validate: {
+      isIn: [['pending', 'in_transit', 'out_for_delivery', 'delivered', 'failed', 'cancelled']]
+    }
   },
   pickupAddress: {
     type: DataTypes.TEXT,
@@ -96,8 +92,11 @@ const Shipment = sequelize.define('Shipment', {
     allowNull: true
   },
   paymentStatus: {
-    type: DataTypes.ENUM('pending', 'paid', 'failed'),
-    defaultValue: 'pending'
+    type: DataTypes.STRING,
+    defaultValue: 'pending',
+    validate: {
+      isIn: [['pending', 'paid', 'failed']]
+    }
   }
 }, {
   timestamps: true,
