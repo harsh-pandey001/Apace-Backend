@@ -16,6 +16,7 @@ const logger = setupLogger();
 const authRoutes = require('./routes/auth.routes');
 const userRoutes = require('./routes/user.routes');
 const shipmentRoutes = require('./routes/shipment.routes');
+const addressRoutes = require('./routes/address.routes');
 
 // Initialize Express app
 const app = express();
@@ -56,6 +57,7 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/shipments', shipmentRoutes);
+app.use('/api/addresses', addressRoutes);
 
 // Error handling middleware (should be last)
 app.use(errorHandler);
