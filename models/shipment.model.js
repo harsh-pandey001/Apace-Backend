@@ -9,7 +9,7 @@ const Shipment = sequelize.define('Shipment', {
   },
   trackingNumber: {
     type: DataTypes.STRING,
-    allowNull: false,
+    allowNull: true,
     unique: true
   },
   status: {
@@ -102,7 +102,7 @@ const Shipment = sequelize.define('Shipment', {
   timestamps: true,
   tableName: 'shipments',
   hooks: {
-    beforeCreate: (shipment) => {
+    beforeValidate: (shipment) => {
       // Generate a tracking number if not provided
       if (!shipment.trackingNumber) {
         const prefix = 'APACE';
