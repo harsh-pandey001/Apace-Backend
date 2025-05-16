@@ -14,6 +14,7 @@ exports.createShipmentValidation = [
     .withMessage('Valid pickup date is required'),
   
   body('estimatedDeliveryDate')
+    .optional()
     .isISO8601()
     .withMessage('Valid delivery date is required'),
   

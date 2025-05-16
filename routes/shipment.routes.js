@@ -2,6 +2,7 @@ const express = require('express');
 const { body } = require('express-validator');
 const shipmentController = require('../controllers/shipment.controller');
 const { protect, restrictTo } = require('../middleware/auth');
+const { createShipmentValidation } = require('../validations/shipment.validation');
 
 const router = express.Router();
 
@@ -12,20 +13,7 @@ router.get('/track/:trackingNumber', shipmentController.trackShipment);
 // Protect all other routes
 router.use(protect);
 
-// Shipment validation rules
-const shipmentValidation = [
-  body('pickupAddress').notEmpty().withMessage('Pickup address is required'),
-  body('deliveryAddress').notEmpty().withMessage('Delivery address is required'),
-  body('scheduledPickupDate').isISO8601().withMessage('Valid pickup date is required'),
-  body('estimatedDeliveryDate').isISO8601().withMessage('Valid delivery date is required'),
-  body('pickupLat').optional().isFloat().withMessage('Pickup latitude must be a valid number'),
-  body('pickupLng').optional().isFloat().withMessage('Pickup longitude must be a valid number'),
-  body('deliveryLat').optional().isFloat().withMessage('Delivery latitude must be a valid number'),
-  body('deliveryLng').optional().isFloat().withMessage('Delivery longitude must be a valid number'),
-  body('weight').optional().isFloat().withMessage('Weight must be a valid number'),
-  body('dimensions').optional().isString().withMessage('Dimensions must be a string'),
-  body('specialInstructions').optional().isString()
-];
+// Use shipment validation from validations file
 
 // Routes for regular users
 // Get all shipments for current user
@@ -35,7 +23,7 @@ router.get('/my-shipments', shipmentController.getUserShipments);
 router.get('/my-shipments/:id', shipmentController.getUserShipment);
 
 // Create a new shipment
-router.post('/', shipmentValidation, shipmentController.createShipment);
+router.post('/', createShipmentValidation, shipmentController.createShipment);
 
 // Track a shipment by tracking number (no auth required)
 router.get('/track/:trackingNumber', shipmentController.trackShipment);

@@ -49,7 +49,7 @@ const Shipment = sequelize.define('Shipment', {
   },
   estimatedDeliveryDate: {
     type: DataTypes.DATE,
-    allowNull: false
+    allowNull: true
   },
   actualPickupDate: {
     type: DataTypes.DATE,

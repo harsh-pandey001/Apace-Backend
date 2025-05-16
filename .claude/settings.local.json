@@ -10,7 +10,8 @@
       "Bash(npm install:*)",
       "Bash(curl:*)",
       "Bash(kill:*)",
-      "Bash(fuser:*)"
+      "Bash(fuser:*)",
+      "Bash(npm run:*)"
     ],
     "deny": []
   }
