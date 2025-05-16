@@ -28,7 +28,8 @@ const connectDB = async () => {
     logger.info('Database connection has been established successfully.');
     
     // Sync all models with the database
-    await sequelize.sync({ force: true });
+    // Using alter:true instead of force:true to keep data between restarts
+    await sequelize.sync({ alter: false });
     logger.info('Database synchronized successfully');
   } catch (error) {
     logger.error('Unable to connect to the database:', error);
