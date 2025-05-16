@@ -17,6 +17,7 @@ const authRoutes = require('./routes/auth.routes');
 const userRoutes = require('./routes/user.routes');
 const shipmentRoutes = require('./routes/shipment.routes');
 const addressRoutes = require('./routes/address.routes');
+const preferencesRoutes = require('./routes/preferences.routes');
 
 // Initialize Express app
 const app = express();
@@ -58,6 +59,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/shipments', shipmentRoutes);
 app.use('/api/addresses', addressRoutes);
+app.use('/api/preferences', preferencesRoutes);
 
 // Error handling middleware (should be last)
 app.use(errorHandler);
