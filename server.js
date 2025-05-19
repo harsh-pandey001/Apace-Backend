@@ -78,17 +78,27 @@ const startServer = async () => {
     // Connect to database
     await connectDB();
     
-    // Start the server
-    app.listen(PORT, () => {
-      logger.info(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
-    });
+    // Only start the server if not in Vercel environment
+    if (!process.env.VERCEL) {
+      app.listen(PORT, () => {
+        logger.info(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+      });
+    }
   } catch (error) {
     logger.error('Failed to start server:', error);
     process.exit(1);
   }
 };
 
-startServer();
+// Initialize database connection
+if (!process.env.VERCEL) {
+  startServer();
+} else {
+  // For Vercel, just connect to database without starting server
+  connectDB().catch(error => {
+    logger.error('Failed to connect to database:', error);
+  });
+}
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err) => {
