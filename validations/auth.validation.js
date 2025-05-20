@@ -1,6 +1,39 @@
 const { body } = require('express-validator');
 
-exports.registerValidation = [
+// Validation for requesting an OTP
+exports.requestOtpValidation = [
+  body('phone')
+    .notEmpty()
+    .withMessage('Phone number is required')
+    .isMobilePhone()
+    .withMessage('Please provide a valid phone number')
+];
+
+// Validation for verifying an OTP
+exports.verifyOtpValidation = [
+  body('phone')
+    .notEmpty()
+    .withMessage('Phone number is required')
+    .isMobilePhone()
+    .withMessage('Please provide a valid phone number'),
+  
+  body('otp')
+    .notEmpty()
+    .withMessage('OTP is required')
+    .isLength({ min: 6, max: 6 })
+    .withMessage('OTP must be 6 digits')
+    .isNumeric()
+    .withMessage('OTP must contain only numbers')
+];
+
+// Validation for signing up a new user
+exports.signupValidation = [
+  body('phone')
+    .notEmpty()
+    .withMessage('Phone number is required')
+    .isMobilePhone()
+    .withMessage('Please provide a valid phone number'),
+  
   body('firstName')
     .notEmpty()
     .withMessage('First name is required'),
@@ -11,69 +44,5 @@ exports.registerValidation = [
   
   body('email')
     .isEmail()
-    .withMessage('Please provide a valid email address'),
-  
-  body('password')
-    .isLength({ min: 8 })
-    .withMessage('Password must be at least 8 characters long')
-    .matches(/\d/)
-    .withMessage('Password must contain at least one number')
-    .matches(/[A-Z]/)
-    .withMessage('Password must contain at least one uppercase letter'),
-  
-  body('passwordConfirm')
-    .custom((value, { req }) => {
-      if (value !== req.body.password) {
-        throw new Error('Password confirmation does not match password');
-      }
-      return true;
-    })
-];
-
-exports.loginValidation = [
-  body('email')
-    .isEmail()
-    .withMessage('Please provide a valid email address'),
-  
-  body('password')
-    .notEmpty()
-    .withMessage('Password is required')
-];
-
-exports.forgotPasswordValidation = [
-  body('email')
-    .isEmail()
     .withMessage('Please provide a valid email address')
-];
-
-exports.resetPasswordValidation = [
-  body('password')
-    .isLength({ min: 8 })
-    .withMessage('Password must be at least 8 characters long'),
-  
-  body('passwordConfirm')
-    .custom((value, { req }) => {
-      if (value !== req.body.password) {
-        throw new Error('Password confirmation does not match password');
-      }
-      return true;
-    })
-];
-
-exports.changePasswordValidation = [
-  body('currentPassword')
-    .notEmpty()
-    .withMessage('Current password is required'),
-  
-  body('password')
-    .isLength({ min: 8 })
-    .withMessage('Password must be at least 8 characters long'),
-  
-  body('passwordConfirm')
-    .custom((value, { req }) => {
-      if (value !== req.body.password) {
-        throw new Error('Password confirmation does not match password');
-      }
-      return true;
-    })
 ];

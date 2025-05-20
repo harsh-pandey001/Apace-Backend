@@ -1,5 +1,4 @@
 const { DataTypes } = require('sequelize');
-const bcrypt = require('bcryptjs');
 const { sequelize } = require('../config/database');
 
 const User = sequelize.define('User', {
@@ -32,13 +31,10 @@ const User = sequelize.define('User', {
   },
   phone: {
     type: DataTypes.STRING,
-    allowNull: true
-  },
-  password: {
-    type: DataTypes.STRING,
     allowNull: false,
+    unique: true,
     validate: {
-      len: [8, 100]
+      notEmpty: true
     }
   },
   role: {
@@ -48,43 +44,13 @@ const User = sequelize.define('User', {
       isIn: [['user', 'driver', 'admin']]
     }
   },
-  passwordChangedAt: {
-    type: DataTypes.DATE,
-    allowNull: true
-  },
   active: {
     type: DataTypes.BOOLEAN,
     defaultValue: true
   }
 }, {
   timestamps: true,
-  tableName: 'users',
-  hooks: {
-    beforeSave: async (user) => {
-      // Only hash password if it's modified or new
-      if (user.changed('password')) {
-        user.password = await bcrypt.hash(user.password, 12);
-        user.passwordChangedAt = new Date(); // Record the time of password change
-      }
-    }
-  }
+  tableName: 'users'
 });
-
-// Method to compare passwords
-User.prototype.correctPassword = async function(candidatePassword) {
-  return await bcrypt.compare(candidatePassword, this.password);
-};
-
-// Method to check if user changed password after token was issued
-User.prototype.changedPasswordAfter = function(JWTTimestamp) {
-  if (this.passwordChangedAt) {
-    const changedTimestamp = parseInt(
-      this.passwordChangedAt.getTime() / 1000,
-      10
-    );
-    return JWTTimestamp < changedTimestamp;
-  }
-  return false;
-};
 
 module.exports = User;

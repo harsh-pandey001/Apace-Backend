@@ -4,6 +4,7 @@ const Shipment = require('./shipment.model');
 const Vehicle = require('./vehicle.model');
 const Address = require('./address.model');
 const UserPreferences = require('./userPreferences.model');
+const OtpVerification = require('./otpVerification.model');
 
 // Define model associations here
 User.hasMany(Shipment, { foreignKey: 'userId', as: 'shipments' });
@@ -26,5 +27,6 @@ module.exports = {
   Shipment,
   Vehicle,
   Address,
-  UserPreferences
+  UserPreferences,
+  OtpVerification
 };

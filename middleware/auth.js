@@ -29,15 +29,18 @@ exports.protect = async (req, res, next) => {
       return next(new AppError('The user belonging to this token no longer exists.', 401));
     }
 
-    // 4) Check if user changed password after the token was issued
-    if (currentUser.changedPasswordAfter(decoded.iat)) {
-      return next(new AppError('User recently changed password. Please log in again.', 401));
+    // 4) Check if user account is active
+    if (!currentUser.active) {
+      return next(new AppError('Your account has been deactivated. Please contact support.', 401));
     }
 
     // GRANT ACCESS TO PROTECTED ROUTE
     req.user = currentUser;
     next();
   } catch (error) {
+    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
+      return next(new AppError('Invalid or expired token. Please log in again.', 401));
+    }
     next(error);
   }
 };

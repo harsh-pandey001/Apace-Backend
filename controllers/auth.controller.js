@@ -1,9 +1,13 @@
 const jwt = require('jsonwebtoken');
-const crypto = require('crypto');
 const { validationResult } = require('express-validator');
-const { User } = require('../models');
+const { User, OtpVerification } = require('../models');
 const { AppError } = require('../middleware/errorHandler');
 const { logger } = require('../utils/logger');
+const { 
+  createOrUpdateOTP, 
+  verifyOTP, 
+  sendOTPviaSMS 
+} = require('../utils/otpUtils');
 
 // Helper function to generate tokens
 const signToken = (id) => {
@@ -23,9 +27,6 @@ const createSendTokens = (user, statusCode, res) => {
   const token = signToken(user.id);
   const refreshToken = signRefreshToken(user.id);
 
-  // Remove password from output
-  user.password = undefined;
-
   res.status(statusCode).json({
     status: 'success',
     token,
@@ -36,8 +37,8 @@ const createSendTokens = (user, statusCode, res) => {
   });
 };
 
-// Register a new user
-exports.register = async (req, res, next) => {
+// Request OTP for login
+exports.requestOtp = async (req, res, next) => {
   try {
     // Check for validation errors
     const errors = validationResult(req);
@@ -48,33 +49,36 @@ exports.register = async (req, res, next) => {
       });
     }
 
-    // Check if email already exists
-    const existingUser = await User.findOne({ where: { email: req.body.email } });
-    if (existingUser) {
-      return next(new AppError('Email already in use', 400));
+    const { phone } = req.body;
+
+    // Check if user exists with this phone
+    const user = await User.findOne({ where: { phone } });
+    
+    // If user doesn't exist, return error
+    if (!user) {
+      return res.status(403).json({
+        status: 'fail',
+        message: 'User not registered. Please sign up first.'
+      });
     }
 
-    // Create the user
-    const newUser = await User.create({
-      firstName: req.body.firstName,
-      lastName: req.body.lastName,
-      email: req.body.email,
-      password: req.body.password,
-      phone: req.body.phone,
-      role: req.body.role || 'user'
+    // Create or update OTP
+    const otpRecord = await createOrUpdateOTP(phone);
+    
+    // Send OTP via SMS (mock)
+    await sendOTPviaSMS(phone, otpRecord.otp);
+
+    res.status(200).json({
+      status: 'success',
+      message: 'OTP sent'
     });
-
-    logger.info(`New user registered: ${newUser.email}`);
-
-    // Generate tokens and send response
-    createSendTokens(newUser, 201, res);
   } catch (error) {
     next(error);
   }
 };
 
-// User login
-exports.login = async (req, res, next) => {
+// Verify OTP
+exports.verifyOtp = async (req, res, next) => {
   try {
     // Check for validation errors
     const errors = validationResult(req);
@@ -85,29 +89,83 @@ exports.login = async (req, res, next) => {
       });
     }
 
-    const { email, password } = req.body;
+    const { phone, otp } = req.body;
 
-    // 1) Check if email and password exist
-    if (!email || !password) {
-      return next(new AppError('Please provide email and password', 400));
+    // Verify the OTP
+    const verificationResult = await verifyOTP(phone, otp);
+    
+    if (!verificationResult.valid) {
+      return next(new AppError(verificationResult.message, 400));
     }
 
-    // 2) Check if user exists && password is correct
-    const user = await User.findOne({ where: { email } });
+    // Check if the user exists
+    const user = await User.findOne({ where: { phone } });
 
-    if (!user || !(await user.correctPassword(password))) {
-      return next(new AppError('Incorrect email or password', 401));
+    if (!user) {
+      return next(new AppError('User not found. Please sign up first.', 404));
     }
 
-    // 3) Check if user account is active
+    // Check if user account is active
     if (!user.active) {
       return next(new AppError('Your account has been deactivated. Please contact support.', 401));
     }
 
-    logger.info(`User logged in: ${user.email}`);
-
-    // 4) If everything ok, send tokens to client
+    logger.info(`User authenticated via OTP: ${user.email}`);
+      
+    // Generate tokens and send response
     createSendTokens(user, 200, res);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Signup new user and send OTP
+exports.signup = async (req, res, next) => {
+  try {
+    // Check for validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        status: 'fail',
+        errors: errors.array()
+      });
+    }
+
+    const { phone, firstName, lastName, email } = req.body;
+
+    // Check if phone already exists
+    const existingUserWithPhone = await User.findOne({ where: { phone } });
+    if (existingUserWithPhone) {
+      return next(new AppError('Phone number already registered', 400));
+    }
+
+    // Check if email already exists
+    const existingUserWithEmail = await User.findOne({ where: { email } });
+    if (existingUserWithEmail) {
+      return next(new AppError('Email already in use', 400));
+    }
+
+    // Create new user
+    const newUser = await User.create({
+      firstName,
+      lastName,
+      email,
+      phone,
+      role: 'user'
+    });
+
+    logger.info(`New user registered: ${newUser.email}`);
+
+    // Create or update OTP
+    const otpRecord = await createOrUpdateOTP(phone);
+    
+    // Send OTP via SMS (mock)
+    await sendOTPviaSMS(phone, otpRecord.otp);
+
+    res.status(201).json({
+      status: 'success',
+      message: 'Signup successful. OTP sent for verification.'
+    });
   } catch (error) {
     next(error);
   }
@@ -140,9 +198,6 @@ exports.refreshToken = async (req, res, next) => {
     const token = signToken(user.id);
     const newRefreshToken = signRefreshToken(user.id);
 
-    // Remove password from output
-    user.password = undefined;
-
     res.status(200).json({
       status: 'success',
       token,
@@ -165,129 +220,4 @@ exports.logout = (req, res) => {
     status: 'success',
     message: 'Successfully logged out'
   });
-};
-
-// Forgot password
-exports.forgotPassword = async (req, res, next) => {
-  try {
-    // Check for validation errors
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        status: 'fail',
-        errors: errors.array()
-      });
-    }
-
-    // 1) Get user based on email
-    const user = await User.findOne({ where: { email: req.body.email } });
-    if (!user) {
-      return next(new AppError('There is no user with that email address', 404));
-    }
-
-    // 2) Generate the random reset token
-    const resetToken = crypto.randomBytes(32).toString('hex');
-    const passwordResetToken = crypto
-      .createHash('sha256')
-      .update(resetToken)
-      .digest('hex');
-
-    // Save to user model (would need to add these fields to the model)
-    await user.update({
-      passwordResetToken,
-      passwordResetExpires: Date.now() + 10 * 60 * 1000 // 10 minutes
-    });
-
-    // 3) In a real app, send email with the reset token
-    // For this template, we'll just return the token in the response
-    logger.info(`Password reset requested for: ${user.email}`);
-
-    res.status(200).json({
-      status: 'success',
-      message: 'Token sent to email!',
-      resetToken // In a real app, you would not send this here
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-// Reset password
-exports.resetPassword = async (req, res, next) => {
-  try {
-    // Check for validation errors
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        status: 'fail',
-        errors: errors.array()
-      });
-    }
-
-    // 1) Get user based on the token
-    const hashedToken = crypto
-      .createHash('sha256')
-      .update(req.params.token)
-      .digest('hex');
-
-    const user = await User.findOne({
-      where: {
-        passwordResetToken: hashedToken,
-        passwordResetExpires: { [Op.gt]: Date.now() }
-      }
-    });
-
-    // 2) If token has not expired, and there is user, set the new password
-    if (!user) {
-      return next(new AppError('Token is invalid or has expired', 400));
-    }
-
-    user.password = req.body.password;
-    user.passwordResetToken = null;
-    user.passwordResetExpires = null;
-    await user.save();
-
-    logger.info(`Password reset completed for: ${user.email}`);
-
-    // 3) Update changedPasswordAt property for the user
-    // This is handled by a hook in the model
-
-    // 4) Log the user in, send JWT
-    createSendTokens(user, 200, res);
-  } catch (error) {
-    next(error);
-  }
-};
-
-// Change password (when logged in)
-exports.changePassword = async (req, res, next) => {
-  try {
-    // Check for validation errors
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        status: 'fail',
-        errors: errors.array()
-      });
-    }
-
-    // 1) Get user from collection
-    const user = await User.findByPk(req.user.id);
-
-    // 2) Check if POSTed current password is correct
-    if (!(await user.correctPassword(req.body.currentPassword))) {
-      return next(new AppError('Your current password is incorrect', 401));
-    }
-
-    // 3) If so, update password
-    user.password = req.body.password;
-    await user.save();
-    
-    logger.info(`Password changed for: ${user.email}`);
-
-    // 4) Log user in, send JWT
-    createSendTokens(user, 200, res);
-  } catch (error) {
-    next(error);
-  }
 };

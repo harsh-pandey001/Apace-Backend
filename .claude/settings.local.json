@@ -18,7 +18,8 @@
       "Bash(sudo mysql:*)",
       "Bash(docker exec:*)",
       "Bash(docker run:*)",
-      "Bash(docker rm:*)"
+      "Bash(docker rm:*)",
+      "Bash(npx sequelize-cli migration:generate:*)"
     ],
     "deny": []
   }
