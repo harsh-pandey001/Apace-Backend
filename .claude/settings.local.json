@@ -11,7 +11,14 @@
       "Bash(curl:*)",
       "Bash(kill:*)",
       "Bash(fuser:*)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(rm:*)",
+      "Bash(mv:*)",
+      "Bash(mysql:*)",
+      "Bash(sudo mysql:*)",
+      "Bash(docker exec:*)",
+      "Bash(docker run:*)",
+      "Bash(docker rm:*)"
     ],
     "deny": []
   }
