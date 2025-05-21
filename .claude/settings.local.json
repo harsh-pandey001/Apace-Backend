@@ -19,7 +19,13 @@
       "Bash(docker exec:*)",
       "Bash(docker run:*)",
       "Bash(docker rm:*)",
-      "Bash(npx sequelize-cli migration:generate:*)"
+      "Bash(npx sequelize-cli migration:generate:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(docker compose:*)",
+      "Bash(docker start:*)",
+      "Bash(sudo lsof:*)",
+      "Bash(sequelize-cli:*)",
+      "Bash(npx sequelize-cli:*)"
     ],
     "deny": []
   }

@@ -11,6 +11,6 @@ services:
       MYSQL_USER: apace_user
       MYSQL_PASSWORD: apace_password
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - ./mysql-data:/var/lib/mysql

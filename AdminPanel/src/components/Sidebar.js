@@ -12,6 +12,10 @@ import {
   Typography,
   Divider,
   useTheme,
+  Badge,
+  Avatar,
+  Tooltip,
+  Collapse,
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -20,20 +24,83 @@ import {
   BookOnline as BookingIcon,
   Settings as SettingsIcon,
   Logout as LogoutIcon,
+  ExpandLess,
+  ExpandMore,
+  PersonOutline,
+  AdminPanelSettings,
+  DirectionsCar,
+  Analytics,
+  Help,
+  Info,
 } from '@mui/icons-material';
 
+// Updated menu items with nested structure and badges
 const menuItems = [
-  { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
-  { text: 'Users', icon: <PeopleIcon />, path: '/users' },
-  { text: 'Shipments', icon: <ShippingIcon />, path: '/shipments' },
-  { text: 'Bookings', icon: <BookingIcon />, path: '/bookings' },
-  { text: 'Preferences', icon: <SettingsIcon />, path: '/preferences' },
+  { 
+    text: 'Dashboard', 
+    icon: <DashboardIcon />, 
+    path: '/dashboard',
+    badge: null, 
+  },
+  { 
+    text: 'Users', 
+    icon: <PeopleIcon />, 
+    path: '/users',
+    badge: 15, // New users count
+    children: [
+      { text: 'All Users', icon: <PersonOutline />, path: '/users' },
+      { text: 'Administrators', icon: <AdminPanelSettings />, path: '/users/admins' },
+      { text: 'Drivers', icon: <DirectionsCar />, path: '/users/drivers' },
+    ]
+  },
+  { 
+    text: 'Shipments', 
+    icon: <ShippingIcon />, 
+    path: '/shipments',
+    badge: 8, // Pending shipments
+  },
+  { 
+    text: 'Bookings', 
+    icon: <BookingIcon />, 
+    path: '/bookings',
+    badge: 3, // New bookings
+  },
+  { 
+    text: 'Analytics', 
+    icon: <Analytics />, 
+    path: '/analytics', 
+    badge: null,
+  },
+  { 
+    text: 'Settings', 
+    icon: <SettingsIcon />, 
+    path: '/preferences',
+    badge: null,
+  },
 ];
 
-function Sidebar({ drawerWidth, mobileOpen, onDrawerToggle }) {
+// Footer menu items
+const footerMenuItems = [
+  { text: 'Help & Support', icon: <Help />, path: '/help' },
+  { text: 'About', icon: <Info />, path: '/about' },
+];
+
+function Sidebar({ drawerWidth, mobileOpen, onDrawerToggle, onRouteChange }) {
   const theme = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
+  
+  // State for tracking which nested menus are open
+  const [openSubMenu, setOpenSubMenu] = React.useState(
+    menuItems.findIndex(item => 
+      item.children && (location.pathname === item.path || 
+      item.children.some(child => location.pathname === child.path))
+    )
+  );
+
+  const handleSubMenuToggle = (index) => {
+    setOpenSubMenu(openSubMenu === index ? -1 : index);
+  };
 
   const handleLogout = () => {
     // Handle logout logic here
@@ -44,48 +111,204 @@ function Sidebar({ drawerWidth, mobileOpen, onDrawerToggle }) {
 
   const drawer = (
     <div>
-      <Toolbar>
+      {/* App Title/Logo */}
+      <Toolbar sx={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        py: 2,
+        backgroundColor: theme.palette.primary.main,
+        color: 'white'
+      }}>
+        <Avatar 
+          sx={{ 
+            width: 40, 
+            height: 40, 
+            bgcolor: 'white', 
+            color: theme.palette.primary.main,
+            mr: 1.5,
+            fontWeight: 'bold'
+          }}
+        >
+          A
+        </Avatar>
         <Typography variant="h6" noWrap component="div" sx={{ fontWeight: 'bold' }}>
           APACE Admin
         </Typography>
       </Toolbar>
+      
       <Divider />
-      <List>
-        {menuItems.map((item) => (
-          <ListItem key={item.text} disablePadding>
+      
+      {/* Main Menu */}
+      <List sx={{ px: 1 }}>
+        {menuItems.map((item, index) => (
+          <React.Fragment key={item.text}>
+            <ListItem disablePadding sx={{ display: 'block', mb: 0.5 }}>
+              <ListItemButton
+                selected={location.pathname === item.path || (item.children && item.children.some(child => location.pathname === child.path))}
+                onClick={() => {
+                  if (item.children) {
+                    handleSubMenuToggle(index);
+                  } else {
+                    navigate(item.path);
+                    // Close sidebar on mobile if prop is provided
+                    if (onDrawerToggle) {
+                      onDrawerToggle();
+                    }
+                  }
+                }}
+                sx={{
+                  px: 2,
+                  py: 1.5,
+                  borderRadius: '8px',
+                  '&.Mui-selected': {
+                    backgroundColor: `${theme.palette.primary.main}15`,
+                    color: theme.palette.primary.main,
+                    '&:hover': {
+                      backgroundColor: `${theme.palette.primary.main}25`,
+                    },
+                  },
+                  '&:hover': {
+                    backgroundColor: theme.palette.mode === 'dark' 
+                      ? 'rgba(255, 255, 255, 0.08)' 
+                      : 'rgba(0, 0, 0, 0.04)',
+                  },
+                }}
+              >
+                <ListItemIcon 
+                  sx={{ 
+                    color: location.pathname === item.path || (item.children && item.children.some(child => location.pathname === child.path))
+                      ? theme.palette.primary.main 
+                      : 'inherit',
+                    minWidth: 40
+                  }}
+                >
+                  {item.badge ? (
+                    <Badge badgeContent={item.badge} color="error">
+                      {item.icon}
+                    </Badge>
+                  ) : (
+                    item.icon
+                  )}
+                </ListItemIcon>
+                <ListItemText 
+                  primary={item.text} 
+                  sx={{ 
+                    '& .MuiListItemText-primary': { 
+                      fontWeight: location.pathname === item.path || (item.children && item.children.some(child => location.pathname === child.path))
+                        ? 600 
+                        : 400 
+                    } 
+                  }}
+                />
+                {item.children && (
+                  openSubMenu === index ? <ExpandLess /> : <ExpandMore />
+                )}
+              </ListItemButton>
+            </ListItem>
+            
+            {/* Submenu */}
+            {item.children && (
+              <Collapse in={openSubMenu === index} timeout="auto" unmountOnExit>
+                <List component="div" disablePadding sx={{ mt: 0.5, mb: 1 }}>
+                  {item.children.map((child) => (
+                    <ListItem key={child.text} disablePadding sx={{ display: 'block', pl: 2 }}>
+                      <Tooltip title={child.text} placement="right" arrow>
+                        <ListItemButton
+                          selected={location.pathname === child.path}
+                          onClick={() => navigate(child.path)}
+                          sx={{
+                            px: 2,
+                            py: 1,
+                            borderRadius: '8px',
+                            '&.Mui-selected': {
+                              backgroundColor: `${theme.palette.primary.main}15`,
+                              color: theme.palette.primary.main,
+                              '&:hover': {
+                                backgroundColor: `${theme.palette.primary.main}25`,
+                              },
+                            },
+                            '&:hover': {
+                              backgroundColor: theme.palette.mode === 'dark' 
+                                ? 'rgba(255, 255, 255, 0.08)' 
+                                : 'rgba(0, 0, 0, 0.04)',
+                            },
+                          }}
+                        >
+                          <ListItemIcon 
+                            sx={{ 
+                              color: location.pathname === child.path 
+                                ? theme.palette.primary.main 
+                                : 'inherit',
+                              minWidth: 40
+                            }}
+                          >
+                            {child.icon}
+                          </ListItemIcon>
+                          <ListItemText 
+                            primary={child.text} 
+                            sx={{ 
+                              '& .MuiListItemText-primary': { 
+                                fontWeight: location.pathname === child.path ? 600 : 400,
+                                fontSize: '0.9rem'
+                              } 
+                            }}
+                          />
+                        </ListItemButton>
+                      </Tooltip>
+                    </ListItem>
+                  ))}
+                </List>
+              </Collapse>
+            )}
+          </React.Fragment>
+        ))}
+      </List>
+      
+      <Box sx={{ flexGrow: 1 }} />
+      
+      <Divider sx={{ mt: 2 }} />
+      
+      {/* Footer Menu */}
+      <List sx={{ px: 1 }}>
+        {footerMenuItems.map((item) => (
+          <ListItem key={item.text} disablePadding sx={{ display: 'block', mb: 0.5 }}>
             <ListItemButton
-              selected={location.pathname === item.path}
               onClick={() => navigate(item.path)}
               sx={{
-                '&.Mui-selected': {
-                  backgroundColor: theme.palette.action.selected,
-                  borderLeft: `4px solid ${theme.palette.primary.main}`,
-                },
+                px: 2,
+                py: 1,
+                borderRadius: '8px',
                 '&:hover': {
-                  backgroundColor: theme.palette.action.hover,
+                  backgroundColor: theme.palette.mode === 'dark' 
+                    ? 'rgba(255, 255, 255, 0.08)' 
+                    : 'rgba(0, 0, 0, 0.04)',
                 },
               }}
             >
-              <ListItemIcon sx={{ color: location.pathname === item.path ? theme.palette.primary.main : 'inherit' }}>
+              <ListItemIcon sx={{ minWidth: 40 }}>
                 {item.icon}
               </ListItemIcon>
               <ListItemText primary={item.text} />
             </ListItemButton>
           </ListItem>
         ))}
-      </List>
-      <Divider />
-      <List>
-        <ListItem disablePadding>
+        
+        {/* Logout Button */}
+        <ListItem disablePadding sx={{ display: 'block', mb: 0.5 }}>
           <ListItemButton
             onClick={handleLogout}
             sx={{
+              px: 2,
+              py: 1,
+              borderRadius: '8px',
+              color: theme.palette.error.main,
               '&:hover': {
-                backgroundColor: theme.palette.action.hover,
+                backgroundColor: `${theme.palette.error.main}15`,
               },
             }}
           >
-            <ListItemIcon sx={{ color: theme.palette.error.main }}>
+            <ListItemIcon sx={{ color: theme.palette.error.main, minWidth: 40 }}>
               <LogoutIcon />
             </ListItemIcon>
             <ListItemText primary="Logout" />
@@ -110,7 +333,12 @@ function Sidebar({ drawerWidth, mobileOpen, onDrawerToggle }) {
         }}
         sx={{
           display: { xs: 'block', sm: 'none' },
-          '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+          '& .MuiDrawer-paper': { 
+            boxSizing: 'border-box', 
+            width: drawerWidth,
+            borderRight: 'none',
+            boxShadow: theme.shadows[8]
+          },
         }}
       >
         {drawer}
@@ -121,7 +349,12 @@ function Sidebar({ drawerWidth, mobileOpen, onDrawerToggle }) {
         variant="permanent"
         sx={{
           display: { xs: 'none', sm: 'block' },
-          '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+          '& .MuiDrawer-paper': { 
+            boxSizing: 'border-box', 
+            width: drawerWidth,
+            borderRight: 'none',
+            boxShadow: theme.shadows[3]
+          },
         }}
         open
       >

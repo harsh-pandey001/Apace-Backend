@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -6,6 +6,7 @@ import {
   Box,
   Grid,
   useTheme,
+  CircularProgress,
 } from '@mui/material';
 import {
   People as PeopleIcon,
@@ -14,54 +15,101 @@ import {
   AttachMoney as MoneyIcon,
   TrendingUp as TrendingUpIcon,
   TrendingDown as TrendingDownIcon,
+  CheckCircle as CompletedIcon,
+  HourglassTop as PendingIcon,
 } from '@mui/icons-material';
-
-const dashboardCards = [
-  {
-    title: 'Total Users',
-    value: '1,234',
-    icon: <PeopleIcon />,
-    color: '#3498db',
-    trend: 'up',
-    trendValue: '12%',
-    trendText: 'from last month',
-  },
-  {
-    title: 'Active Shipments',
-    value: '456',
-    icon: <ShippingIcon />,
-    color: '#2ecc71',
-    trend: 'up',
-    trendValue: '8%',
-    trendText: 'from last week',
-  },
-  {
-    title: 'Completed Bookings',
-    value: '789',
-    icon: <BookingIcon />,
-    color: '#f39c12',
-    trend: 'down',
-    trendValue: '5%',
-    trendText: 'from yesterday',
-  },
-  {
-    title: 'Revenue',
-    value: '$45,678',
-    icon: <MoneyIcon />,
-    color: '#e74c3c',
-    trend: 'up',
-    trendValue: '15%',
-    trendText: 'from last month',
-  },
-];
+import { getAdminShipments, calculateShipmentMetrics } from '../services/shipmentService';
 
 function DashboardCards() {
   const theme = useTheme();
+  const [loading, setLoading] = useState(true);
+  const [metrics, setMetrics] = useState({
+    totalShipments: 0,
+    pendingShipments: 0,
+    completedShipments: 0,
+    totalRevenue: 0,
+    topUser: null
+  });
+
+  // Fetch shipments data for metrics
+  useEffect(() => {
+    const fetchShipmentMetrics = async () => {
+      try {
+        const result = await getAdminShipments();
+        const shipmentMetrics = calculateShipmentMetrics(result.data.shipments);
+        setMetrics(shipmentMetrics);
+      } catch (error) {
+        console.error('Error fetching shipment metrics:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchShipmentMetrics();
+  }, []);
+
+  // Define the dashboard card data array based on metrics
+  const dashboardCards = [
+    {
+      title: 'Total Users',
+      value: '1,234',
+      icon: <PeopleIcon />,
+      color: '#3498db',
+      trend: 'up',
+      trendValue: '12%',
+      trendText: 'from last month',
+    },
+    {
+      title: 'Active Shipments',
+      value: loading ? '-' : metrics.totalShipments,
+      icon: <ShippingIcon />,
+      color: '#2ecc71',
+      trend: 'up',
+      trendValue: '8%',
+      trendText: 'from last week',
+    },
+    {
+      title: 'Pending Shipments',
+      value: loading ? '-' : metrics.pendingShipments,
+      icon: <PendingIcon />,
+      color: '#f39c12',
+      trend: metrics.pendingShipments > 5 ? 'up' : 'down',
+      trendValue: metrics.pendingShipments > 5 ? '15%' : '5%',
+      trendText: 'from yesterday',
+    },
+    {
+      title: 'Completed Shipments',
+      value: loading ? '-' : metrics.completedShipments,
+      icon: <CompletedIcon />,
+      color: '#9b59b6',
+      trend: 'up',
+      trendValue: '10%',
+      trendText: 'from last week',
+    },
+    {
+      title: 'Total Revenue',
+      value: loading ? '-' : `$${metrics.totalRevenue}`,
+      icon: <MoneyIcon />,
+      color: '#e74c3c',
+      trend: 'up',
+      trendValue: '15%',
+      trendText: 'from last month',
+    },
+    {
+      title: 'Completed Bookings',
+      value: '789',
+      icon: <BookingIcon />,
+      color: '#1abc9c',
+      trend: 'down',
+      trendValue: '5%',
+      trendText: 'from yesterday',
+    },
+  ];
 
   return (
     <Grid container spacing={3}>
       {dashboardCards.map((card, index) => (
-        <Grid item xs={12} sm={6} md={3} key={index}>
+        <Grid item xs={12} sm={6} md={4} key={index}>
           <Card
             sx={{
               height: '100%',
@@ -70,6 +118,7 @@ function DashboardCards() {
               transition: 'transform 0.3s, box-shadow 0.3s',
               '&:hover': {
                 transform: 'translateY(-5px)',
+                boxShadow: theme.shadows[8],
               },
             }}
           >
@@ -93,9 +142,13 @@ function DashboardCards() {
                   <Typography color="text.secondary" gutterBottom>
                     {card.title}
                   </Typography>
-                  <Typography variant="h4" component="div">
-                    {card.value}
-                  </Typography>
+                  {loading && (card.title.includes('Shipment') || card.title.includes('Revenue')) ? (
+                    <CircularProgress size={24} />
+                  ) : (
+                    <Typography variant="h4" component="div">
+                      {card.value}
+                    </Typography>
+                  )}
                 </Box>
               </Box>
               

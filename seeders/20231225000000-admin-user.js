@@ -1,18 +1,15 @@
 'use strict';
 const { v4: uuidv4 } = require('uuid');
-const bcrypt = require('bcryptjs');
 
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    const adminPassword = await bcrypt.hash('Admin123!', 12);
-    
     await queryInterface.bulkInsert('users', [{
       id: uuidv4(),
       firstName: 'Admin',
       lastName: 'User',
       email: 'admin@apace.com',
-      password: adminPassword,
+      phone: '+1234567890', // Add a phone number since it's required now
       role: 'admin',
       active: true,
       createdAt: new Date(),
