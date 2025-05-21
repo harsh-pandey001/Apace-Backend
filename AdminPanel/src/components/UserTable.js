@@ -18,14 +18,18 @@ import {
   Typography,
   Tooltip,
   Avatar,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
   Button,
   CircularProgress,
   Alert,
+  Snackbar,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  FormControl,
+  InputLabel,
+  Select,
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -35,11 +39,13 @@ import {
   Block as BlockIcon,
   CheckCircle as CheckCircleIcon,
   Refresh as RefreshIcon,
+  Transform as TransformIcon,
 } from '@mui/icons-material';
 import { visuallyHidden } from '@mui/utils';
 import { format } from 'date-fns';
 import userService from '../services/userService';
 import UserDetailsModal from './UserDetailsModal';
+import DeleteConfirmationDialog from './DeleteConfirmationDialog';
 
 // Column definition
 const headCells = [
@@ -119,10 +125,24 @@ const UserTable = ({ searchTerm, filters, onUserDataChange }) => {
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   
   // State for user details modal
   const [userDetailsOpen, setUserDetailsOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState(null);
+  
+  // State for role switching
+  const [roleDialogOpen, setRoleDialogOpen] = useState(false);
+  const [roleChangeUser, setRoleChangeUser] = useState(null);
+  const [selectedRole, setSelectedRole] = useState('');
+  const [roleChangeLoading, setRoleChangeLoading] = useState(false);
+  
+  // State for snackbar
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
 
   // Fetch users data from API
   const fetchUsers = async () => {
@@ -231,12 +251,17 @@ const UserTable = ({ searchTerm, filters, onUserDataChange }) => {
     setAnchorEl(null);
   };
 
-  const handleViewUser = () => {
-    if (!selectedUser) return;
+  const handleViewUser = (user) => {
+    const userToView = user || selectedUser;
+    if (!userToView) return;
     
-    setSelectedUserId(selectedUser.id);
+    setSelectedUserId(userToView.id);
     setUserDetailsOpen(true);
-    handleMenuClose();
+    
+    // Close menu if it was triggered from the menu
+    if (!user) {
+      handleMenuClose();
+    }
   };
 
   const handleEditUser = () => {
@@ -253,15 +278,37 @@ const UserTable = ({ searchTerm, filters, onUserDataChange }) => {
   const handleDeleteConfirm = async () => {
     if (!selectedUser) return;
     
+    setDeleteLoading(true);
+    
     try {
       await userService.deleteUser(selectedUser.id);
-      fetchUsers(); // Reload the data
+      
+      // Show success notification
+      setSnackbar({
+        open: true,
+        message: 'User deleted successfully.',
+        severity: 'success'
+      });
+      
+      // Close the delete dialog
       setDeleteDialogOpen(false);
+      
+      // Reload the data
+      fetchUsers();
     } catch (err) {
       console.error('Error deleting user:', err);
+      
       // Show error notification
-      setError('Failed to delete user. Please try again.');
+      setSnackbar({
+        open: true,
+        message: 'Failed to delete user. Please try again.',
+        severity: 'error'
+      });
+      
+      // Close the delete dialog
       setDeleteDialogOpen(false);
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -285,9 +332,77 @@ const UserTable = ({ searchTerm, filters, onUserDataChange }) => {
       handleMenuClose();
     }
   };
+  
+  // Open role change dialog
+  const handleOpenRoleDialog = () => {
+    if (!selectedUser) return;
+    
+    // Don't allow role changes for admin users
+    if (selectedUser.role === 'admin') {
+      setSnackbar({
+        open: true,
+        message: 'Admin roles cannot be changed.',
+        severity: 'warning'
+      });
+      handleMenuClose();
+      return;
+    }
+    
+    setRoleChangeUser(selectedUser);
+    setSelectedRole(selectedUser.role);
+    setRoleDialogOpen(true);
+    handleMenuClose();
+  };
+  
+  // Close role change dialog
+  const handleCloseRoleDialog = () => {
+    setRoleDialogOpen(false);
+    setRoleChangeUser(null);
+  };
+  
+  // Handle role change confirmation
+  const handleRoleChangeConfirm = async () => {
+    if (!roleChangeUser || roleChangeUser.role === selectedRole) {
+      handleCloseRoleDialog();
+      return;
+    }
+    
+    setRoleChangeLoading(true);
+    
+    try {
+      await userService.updateUser(roleChangeUser.id, { role: selectedRole });
+      
+      // Show success notification
+      setSnackbar({
+        open: true,
+        message: `User role updated to ${selectedRole === 'user' ? 'Customer' : 'Driver'} successfully.`,
+        severity: 'success'
+      });
+      
+      // Close dialog and reload data
+      handleCloseRoleDialog();
+      fetchUsers();
+    } catch (err) {
+      console.error('Error updating user role:', err);
+      
+      // Show error notification
+      setSnackbar({
+        open: true,
+        message: err.response?.data?.message || 'Failed to update user role. Please try again.',
+        severity: 'error'
+      });
+    } finally {
+      setRoleChangeLoading(false);
+    }
+  };
 
   const handleRefresh = () => {
     fetchUsers();
+  };
+  
+  const handleSnackbarClose = (event, reason) => {
+    if (reason === 'clickaway') return;
+    setSnackbar(prev => ({ ...prev, open: false }));
   };
 
   const handleUserDetailsClose = () => {
@@ -439,13 +554,38 @@ const UserTable = ({ searchTerm, filters, onUserDataChange }) => {
                   </TableCell>
                   <TableCell>{formatDate(user.createdAt)}</TableCell>
                   <TableCell>
-                    <IconButton
-                      aria-label="more options"
-                      size="small"
-                      onClick={(e) => handleMenuClick(e, user)}
-                    >
-                      <MoreVertIcon />
-                    </IconButton>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <Tooltip title="View Details">
+                        <IconButton
+                          aria-label="view user details"
+                          size="small"
+                          color="primary"
+                          onClick={() => handleViewUser(user)}
+                        >
+                          <VisibilityIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Delete User">
+                        <IconButton
+                          aria-label="delete user"
+                          size="small"
+                          color="error"
+                          onClick={() => {
+                            setSelectedUser(user);
+                            setDeleteDialogOpen(true);
+                          }}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <IconButton
+                        aria-label="more options"
+                        size="small"
+                        onClick={(e) => handleMenuClick(e, user)}
+                      >
+                        <MoreVertIcon />
+                      </IconButton>
+                    </Box>
                   </TableCell>
                 </TableRow>
               ))
@@ -482,6 +622,13 @@ const UserTable = ({ searchTerm, filters, onUserDataChange }) => {
           <EditIcon fontSize="small" sx={{ mr: 1 }} />
           Edit User
         </MenuItem>
+        {/* Only show role change option for non-admin users */}
+        {selectedUser && selectedUser.role !== 'admin' && (
+          <MenuItem onClick={handleOpenRoleDialog}>
+            <TransformIcon fontSize="small" sx={{ mr: 1 }} />
+            Change Role
+          </MenuItem>
+        )}
         <MenuItem onClick={handleToggleStatus}>
           {selectedUser?.active ? (
             <>
@@ -501,23 +648,14 @@ const UserTable = ({ searchTerm, filters, onUserDataChange }) => {
         </MenuItem>
       </Menu>
 
-      <Dialog
+      <DeleteConfirmationDialog
         open={deleteDialogOpen}
-        onClose={handleDeleteCancel}
-      >
-        <DialogTitle>Delete User</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            Are you sure you want to delete {selectedUser?.firstName} {selectedUser?.lastName}? This action cannot be undone.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleDeleteCancel}>Cancel</Button>
-          <Button onClick={handleDeleteConfirm} color="error" variant="contained">
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
+        entityName="User"
+        confirmationText={selectedUser ? `Are you sure you want to delete ${selectedUser.firstName} ${selectedUser.lastName}? This action cannot be undone.` : ''}
+        onCancel={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        loading={deleteLoading}
+      />
       
       {/* User Details Modal */}
       <UserDetailsModal
@@ -525,6 +663,62 @@ const UserTable = ({ searchTerm, filters, onUserDataChange }) => {
         userId={selectedUserId}
         onClose={handleUserDetailsClose}
       />
+      
+      {/* Role Change Dialog */}
+      <Dialog open={roleDialogOpen} onClose={handleCloseRoleDialog}>
+        <DialogTitle>Change User Role</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Select a new role for {roleChangeUser?.firstName} {roleChangeUser?.lastName}. 
+            This will change their permissions and access within the system.
+          </DialogContentText>
+          <Box sx={{ mt: 2 }}>
+            <FormControl fullWidth>
+              <InputLabel id="role-select-label">Role</InputLabel>
+              <Select
+                labelId="role-select-label"
+                value={selectedRole}
+                label="Role"
+                onChange={(e) => setSelectedRole(e.target.value)}
+                disabled={roleChangeLoading}
+              >
+                <MenuItem value="user">Customer</MenuItem>
+                <MenuItem value="driver">Driver</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseRoleDialog} disabled={roleChangeLoading}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleRoleChangeConfirm} 
+            variant="contained" 
+            color="primary"
+            disabled={roleChangeLoading || (roleChangeUser && roleChangeUser.role === selectedRole)}
+            startIcon={roleChangeLoading ? <CircularProgress size={16} /> : null}
+          >
+            {roleChangeLoading ? 'Updating...' : 'Update Role'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={handleSnackbarClose}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={handleSnackbarClose}
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </>
   );
 };

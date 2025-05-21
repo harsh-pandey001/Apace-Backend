@@ -215,7 +215,22 @@ exports.updateUser = async (req, res, next) => {
     const allowedFields = ['firstName', 'lastName', 'email', 'phone', 'role', 'active'];
     Object.keys(req.body).forEach(field => {
       if (allowedFields.includes(field)) {
-        filteredBody[field] = req.body[field];
+        // Restrict role changes - only allow switching between 'user' and 'driver'
+        if (field === 'role') {
+          // If current role is 'admin', don't allow role change
+          if (user.role === 'admin') {
+            return next(new AppError('Cannot change role of admin users', 403));
+          }
+          
+          // Only allow role to be 'user' or 'driver'
+          if (!['user', 'driver'].includes(req.body.role)) {
+            return next(new AppError('Role can only be changed to "user" or "driver"', 400));
+          }
+          
+          filteredBody[field] = req.body.role;
+        } else {
+          filteredBody[field] = req.body[field];
+        }
       }
     });
 

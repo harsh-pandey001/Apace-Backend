@@ -16,6 +16,36 @@ export const getAdminShipments = async (params = {}) => {
 };
 
 /**
+ * Fetch a specific shipment by ID for admin view
+ * @param {string} shipmentId - The ID of the shipment to fetch
+ * @returns {Promise} - Promise resolving to shipment data with user details
+ */
+export const getAdminShipmentDetails = async (shipmentId) => {
+  try {
+    const response = await api.get(`/shipments/admin/${shipmentId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching shipment details:', error);
+    throw error;
+  }
+};
+
+/**
+ * Delete a shipment (admin only)
+ * @param {string} shipmentId - The ID of the shipment to delete
+ * @returns {Promise} - Promise resolving to the deletion result
+ */
+export const deleteAdminShipment = async (shipmentId) => {
+  try {
+    const response = await api.delete(`/shipments/admin/${shipmentId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error deleting shipment:', error);
+    throw error;
+  }
+};
+
+/**
  * Calculate summary metrics from shipment data
  * @param {Array} shipments - Array of shipment objects
  * @returns {Object} - Object containing metrics

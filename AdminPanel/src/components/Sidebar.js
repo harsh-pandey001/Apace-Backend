@@ -21,7 +21,6 @@ import {
   Dashboard as DashboardIcon,
   People as PeopleIcon,
   LocalShipping as ShippingIcon,
-  BookOnline as BookingIcon,
   Settings as SettingsIcon,
   Logout as LogoutIcon,
   ExpandLess,
@@ -29,7 +28,6 @@ import {
   PersonOutline,
   AdminPanelSettings,
   DirectionsCar,
-  Analytics,
   Help,
   Info,
 } from '@mui/icons-material';
@@ -49,7 +47,7 @@ const menuItems = [
     badge: 15, // New users count
     children: [
       { text: 'All Users', icon: <PersonOutline />, path: '/users' },
-      { text: 'Administrators', icon: <AdminPanelSettings />, path: '/users/admins' },
+      { text: 'Customers', icon: <PersonOutline />, path: '/users/customers' },
       { text: 'Drivers', icon: <DirectionsCar />, path: '/users/drivers' },
     ]
   },
@@ -58,18 +56,6 @@ const menuItems = [
     icon: <ShippingIcon />, 
     path: '/shipments',
     badge: 8, // Pending shipments
-  },
-  { 
-    text: 'Bookings', 
-    icon: <BookingIcon />, 
-    path: '/bookings',
-    badge: 3, // New bookings
-  },
-  { 
-    text: 'Analytics', 
-    icon: <Analytics />, 
-    path: '/analytics', 
-    badge: null,
   },
   { 
     text: 'Settings', 

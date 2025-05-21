@@ -1,6 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { Card, CardContent, CardHeader, Box, Typography, useTheme } from '@mui/material';
+import { Card, CardContent, CardHeader, Box, useTheme } from '@mui/material';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, Title } from 'chart.js';
 import { Doughnut } from 'react-chartjs-2';
 
@@ -8,40 +8,46 @@ import { Doughnut } from 'react-chartjs-2';
 ChartJS.register(ArcElement, Tooltip, Legend, Title);
 
 /**
- * Component for displaying user role distribution in a doughnut chart
+ * Component for displaying shipment status distribution in a doughnut chart
  */
-const UserRoleChart = ({ roleDistribution }) => {
+const ShipmentStatusChart = ({ shipments }) => {
   const theme = useTheme();
-
-  // Handle empty data
-  if (!roleDistribution || Object.keys(roleDistribution).length === 0) {
-    roleDistribution = { customer: 0, driver: 0, admin: 0 };
-  }
+  
+  // Count shipments by status
+  const countByStatus = shipments.reduce((acc, shipment) => {
+    const status = shipment.status || 'pending';
+    acc[status] = (acc[status] || 0) + 1;
+    return acc;
+  }, {});
   
   // Format for better display names
-  const formatRoleName = (role) => {
-    return role.charAt(0).toUpperCase() + role.slice(1);
+  const formatStatusName = (status) => {
+    return status.charAt(0).toUpperCase() + status.slice(1);
   };
 
-  // Define colors for each role
-  const getRoleColor = (role) => {
-    switch (role) {
-      case 'admin':
-        return '#e74c3c';
-      case 'driver':
-        return '#f39c12';
+  // Define colors for each status
+  const getStatusColor = (status) => {
+    switch (status.toLowerCase()) {
+      case 'delivered':
+        return '#2ecc71'; // Green
+      case 'in-transit':
+        return '#3498db'; // Blue
+      case 'pending':
+        return '#f39c12'; // Orange
+      case 'cancelled':
+        return '#e74c3c'; // Red
       default:
-        return '#3498db';
+        return '#95a5a6'; // Gray
     }
   };
 
   // Prepare data for Chart.js
   const chartData = {
-    labels: Object.keys(roleDistribution).map(formatRoleName),
+    labels: Object.keys(countByStatus).map(formatStatusName),
     datasets: [
       {
-        data: Object.values(roleDistribution),
-        backgroundColor: Object.keys(roleDistribution).map(getRoleColor),
+        data: Object.values(countByStatus),
+        backgroundColor: Object.keys(countByStatus).map(getStatusColor),
         borderColor: theme.palette.background.paper,
         borderWidth: 2,
       },
@@ -72,7 +78,7 @@ const UserRoleChart = ({ roleDistribution }) => {
             const label = context.label || '';
             const value = context.raw || 0;
             const total = context.dataset.data.reduce((a, b) => a + b, 0);
-            const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+            const percentage = Math.round((value / total) * 100);
             return `${label}: ${value} (${percentage}%)`;
           },
         },
@@ -80,14 +86,14 @@ const UserRoleChart = ({ roleDistribution }) => {
     },
   };
 
-  // Calculate total users
-  const totalUsers = Object.values(roleDistribution).reduce((a, b) => a + b, 0);
+  // Calculate total shipments
+  const totalShipments = Object.values(countByStatus).reduce((a, b) => a + b, 0);
 
   return (
-    <Card sx={{ height: '100%' }}>
+    <Card sx={{ mb: 3, height: '100%' }}>
       <CardHeader 
-        title="User Roles Distribution" 
-        subheader={`Total: ${totalUsers} users`}
+        title="Shipment Status Distribution" 
+        subheader={`Total: ${totalShipments} shipments`}
         titleTypographyProps={{ variant: 'h6' }}
         subheaderTypographyProps={{ variant: 'body2' }}
       />
@@ -103,10 +109,12 @@ const UserRoleChart = ({ roleDistribution }) => {
               textAlign: 'center',
             }}
           >
-            <Typography variant="body2" color="text.secondary">
-              Total Users
-            </Typography>
-            <Typography variant="h4">{totalUsers}</Typography>
+            <Box sx={{ color: 'text.secondary', fontSize: '0.875rem' }}>
+              Total
+            </Box>
+            <Box sx={{ fontSize: '1.5rem', fontWeight: 'bold' }}>
+              {totalShipments}
+            </Box>
           </Box>
         </Box>
       </CardContent>
@@ -114,8 +122,8 @@ const UserRoleChart = ({ roleDistribution }) => {
   );
 };
 
-UserRoleChart.propTypes = {
-  roleDistribution: PropTypes.object.isRequired,
+ShipmentStatusChart.propTypes = {
+  shipments: PropTypes.array.isRequired,
 };
 
-export default UserRoleChart;
+export default ShipmentStatusChart;

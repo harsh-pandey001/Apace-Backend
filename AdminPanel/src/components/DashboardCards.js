@@ -11,7 +11,6 @@ import {
 import {
   People as PeopleIcon,
   LocalShipping as ShippingIcon,
-  BookOnline as BookingIcon,
   AttachMoney as MoneyIcon,
   TrendingUp as TrendingUpIcon,
   TrendingDown as TrendingDownIcon,
@@ -94,15 +93,6 @@ function DashboardCards() {
       trend: 'up',
       trendValue: '15%',
       trendText: 'from last month',
-    },
-    {
-      title: 'Completed Bookings',
-      value: '789',
-      icon: <BookingIcon />,
-      color: '#1abc9c',
-      trend: 'down',
-      trendValue: '5%',
-      trendText: 'from yesterday',
     },
   ];
 

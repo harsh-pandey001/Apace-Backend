@@ -43,3 +43,35 @@ exports.createUserValidation = [
     .isIn(['user', 'driver', 'admin'])
     .withMessage('Invalid role')
 ];
+
+exports.updateUserValidation = [
+  body('firstName')
+    .optional()
+    .notEmpty()
+    .withMessage('First name cannot be empty'),
+  
+  body('lastName')
+    .optional()
+    .notEmpty()
+    .withMessage('Last name cannot be empty'),
+  
+  body('email')
+    .optional()
+    .isEmail()
+    .withMessage('Please provide a valid email address'),
+  
+  body('phone')
+    .optional()
+    .isMobilePhone()
+    .withMessage('Please provide a valid phone number'),
+    
+  body('role')
+    .optional()
+    .isIn(['user', 'driver'])
+    .withMessage('Role can only be updated to user or driver'),
+    
+  body('active')
+    .optional()
+    .isBoolean()
+    .withMessage('Active status must be a boolean value')
+];

@@ -25,7 +25,8 @@
       "Bash(docker start:*)",
       "Bash(sudo lsof:*)",
       "Bash(sequelize-cli:*)",
-      "Bash(npx sequelize-cli:*)"
+      "Bash(npx sequelize-cli:*)",
+      "Bash(grep:*)"
     ],
     "deny": []
   }

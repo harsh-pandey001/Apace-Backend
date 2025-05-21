@@ -22,7 +22,12 @@ import {
   Grid,
   Tooltip,
   IconButton,
-  Pagination
+  Pagination,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Snackbar
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -31,9 +36,12 @@ import {
   LocationOn as LocationIcon,
   Person as PersonIcon,
   Email as EmailIcon,
-  Phone as PhoneIcon
+  Phone as PhoneIcon,
+  Visibility as VisibilityIcon,
+  Delete as DeleteIcon
 } from '@mui/icons-material';
-import { getAdminShipments, formatDate } from '../services/shipmentService';
+import { getAdminShipments, formatDate, deleteAdminShipment } from '../services/shipmentService';
+import ShipmentDetailsModal from '../components/ShipmentDetailsModal';
 
 function Shipments() {
   const [shipments, setShipments] = useState([]);
@@ -46,6 +54,23 @@ function Shipments() {
     totalPages: 1,
     currentPage: 1,
     totalShipments: 0
+  });
+  const [shipmentDetailsModal, setShipmentDetailsModal] = useState({
+    open: false,
+    shipmentId: null
+  });
+  
+  // State for shipment deletion
+  const [deleteDialog, setDeleteDialog] = useState({
+    open: false,
+    shipmentId: null,
+    trackingNumber: '',
+  });
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: '',
+    severity: 'success'
   });
 
   // Fetch shipments data
@@ -120,6 +145,79 @@ function Shipments() {
     }));
     // If backend pagination is implemented, fetch the specific page
     // fetchShipments({ page: value });
+  };
+  
+  // Handle opening the shipment details modal
+  const handleOpenShipmentDetails = (shipmentId) => {
+    setShipmentDetailsModal({
+      open: true,
+      shipmentId
+    });
+  };
+  
+  // Handle closing the shipment details modal
+  const handleCloseShipmentDetails = () => {
+    setShipmentDetailsModal({
+      open: false,
+      shipmentId: null
+    });
+  };
+  
+  // Handle opening the delete confirmation dialog
+  const handleOpenDeleteDialog = (shipment) => {
+    setDeleteDialog({
+      open: true,
+      shipmentId: shipment.id,
+      trackingNumber: shipment.trackingNumber
+    });
+  };
+  
+  // Handle closing the delete dialog
+  const handleCloseDeleteDialog = () => {
+    setDeleteDialog({
+      open: false,
+      shipmentId: null,
+      trackingNumber: ''
+    });
+  };
+  
+  // Handle shipment deletion
+  const handleDeleteShipment = async () => {
+    if (!deleteDialog.shipmentId) return;
+    
+    setDeleteLoading(true);
+    
+    try {
+      await deleteAdminShipment(deleteDialog.shipmentId);
+      
+      // Show success message
+      setSnackbar({
+        open: true,
+        message: `Shipment ${deleteDialog.trackingNumber} deleted successfully`,
+        severity: 'success'
+      });
+      
+      // Close the dialog
+      handleCloseDeleteDialog();
+      
+      // Refresh the shipments list
+      fetchShipments();
+    } catch (error) {
+      // Show error message
+      setSnackbar({
+        open: true,
+        message: `Failed to delete shipment: ${error.response?.data?.message || 'Unknown error'}`,
+        severity: 'error'
+      });
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+  
+  // Handle snackbar close
+  const handleSnackbarClose = (event, reason) => {
+    if (reason === 'clickaway') return;
+    setSnackbar({ ...snackbar, open: false });
   };
 
   // Get status color for chip display
@@ -220,7 +318,7 @@ function Shipments() {
                 Total Revenue
               </Typography>
               <Typography variant="h4">
-                ${shipments.reduce((sum, s) => sum + (parseFloat(s.price) || 0), 0).toFixed(2)}
+                ₹{shipments.reduce((sum, s) => sum + (parseFloat(s.price) || 0), 0).toFixed(2)}
               </Typography>
             </CardContent>
           </Card>
@@ -276,6 +374,7 @@ function Shipments() {
                     <TableCell>Payment</TableCell>
                     <TableCell>User</TableCell>
                     <TableCell>Vehicle</TableCell>
+                    <TableCell>Actions</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -322,7 +421,7 @@ function Shipments() {
                       <TableCell>
                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                           <Typography variant="body2">
-                            <strong>Price:</strong> ${parseFloat(shipment.price).toFixed(2)}
+                            <strong>Price:</strong> ₹{parseFloat(shipment.price).toFixed(2)}
                           </Typography>
                           <Chip
                             label={shipment.paymentStatus}
@@ -362,6 +461,28 @@ function Shipments() {
                           <Chip label="Not Assigned" size="small" />
                         )}
                       </TableCell>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                          <Tooltip title="View Details">
+                            <IconButton 
+                              size="small" 
+                              color="primary"
+                              onClick={() => handleOpenShipmentDetails(shipment.id)}
+                            >
+                              <VisibilityIcon />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Delete Shipment">
+                            <IconButton 
+                              size="small" 
+                              color="error"
+                              onClick={() => handleOpenDeleteDialog(shipment)}
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -381,6 +502,64 @@ function Shipments() {
           </>
         )}
       </Paper>
+      
+      {/* Shipment Details Modal */}
+      <ShipmentDetailsModal
+        open={shipmentDetailsModal.open}
+        shipmentId={shipmentDetailsModal.shipmentId}
+        onClose={handleCloseShipmentDetails}
+      />
+      
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialog.open}
+        onClose={handleCloseDeleteDialog}
+        aria-labelledby="delete-dialog-title"
+      >
+        <DialogTitle id="delete-dialog-title">Delete Shipment</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to delete shipment with tracking number{' '}
+            <strong>{deleteDialog.trackingNumber}</strong>?
+          </Typography>
+          <Typography variant="body2" color="error" sx={{ mt: 2 }}>
+            This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button 
+            onClick={handleCloseDeleteDialog} 
+            disabled={deleteLoading}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleDeleteShipment} 
+            color="error" 
+            variant="contained"
+            disabled={deleteLoading}
+            startIcon={deleteLoading && <CircularProgress size={16} color="inherit" />}
+          >
+            {deleteLoading ? 'Deleting...' : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={handleSnackbarClose}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={handleSnackbarClose}
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

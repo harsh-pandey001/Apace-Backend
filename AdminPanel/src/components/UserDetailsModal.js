@@ -18,6 +18,7 @@ import {
 } from '@mui/icons-material';
 import UserDetailsCard from './UserDetailsCard';
 import userService from '../services/userService';
+import DeleteConfirmationDialog from './DeleteConfirmationDialog';
 
 /**
  * UserDetailsModal component for displaying and managing user details
@@ -31,6 +32,8 @@ const UserDetailsModal = ({ open, userId, onClose }) => {
     message: '',
     severity: 'success',
   });
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Fetch user details when the modal opens and a userId is provided
   useEffect(() => {
@@ -91,6 +94,39 @@ const UserDetailsModal = ({ open, userId, onClose }) => {
       });
     }
   };
+  
+  // Handle updating user role
+  const handleUpdateRole = async (userId, newRole) => {
+    if (!userId || !newRole) return;
+    
+    try {
+      // Call API to update user role
+      const response = await userService.updateUser(userId, { role: newRole });
+      
+      // Update the local user state
+      setUser(response.data.user);
+      
+      // Show success message
+      setSnackbar({
+        open: true,
+        message: `User role updated to ${newRole === 'user' ? 'Customer' : 'Driver'} successfully.`,
+        severity: 'success',
+      });
+      
+      return response;
+    } catch (err) {
+      console.error('Error updating user role:', err);
+      
+      // Show error message
+      setSnackbar({
+        open: true,
+        message: err.response?.data?.message || 'Failed to update user role. Please try again.',
+        severity: 'error',
+      });
+      
+      throw err;
+    }
+  };
 
   // Handle the view shipments action
   const handleViewShipments = () => {
@@ -113,6 +149,56 @@ const UserDetailsModal = ({ open, userId, onClose }) => {
     setSnackbar({ ...snackbar, open: false });
   };
 
+  // Handle opening the delete confirmation dialog
+  const handleOpenDeleteDialog = () => {
+    setDeleteDialogOpen(true);
+  };
+  
+  // Handle canceling the delete operation
+  const handleCancelDelete = () => {
+    setDeleteDialogOpen(false);
+  };
+  
+  // Handle confirming the delete operation
+  const handleConfirmDelete = async () => {
+    if (!user) return;
+    
+    setDeleteLoading(true);
+    
+    try {
+      await userService.deleteUser(user.id);
+      
+      // Show success message
+      setSnackbar({
+        open: true,
+        message: 'User deleted successfully.',
+        severity: 'success',
+      });
+      
+      // Close the delete dialog
+      setDeleteDialogOpen(false);
+      
+      // Close the user details modal after a short delay
+      setTimeout(() => {
+        onClose();
+      }, 1500);
+    } catch (err) {
+      console.error('Error deleting user:', err);
+      
+      // Close the delete dialog
+      setDeleteDialogOpen(false);
+      
+      // Show error message
+      setSnackbar({
+        open: true,
+        message: 'Failed to delete user. Please try again.',
+        severity: 'error',
+      });
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+  
   // Handle modal close event
   const handleClose = () => {
     setUser(null);
@@ -157,6 +243,8 @@ const UserDetailsModal = ({ open, userId, onClose }) => {
             error={error}
             onToggleStatus={handleToggleStatus}
             onViewShipments={handleViewShipments}
+            onDelete={handleOpenDeleteDialog}
+            onUpdateRole={handleUpdateRole}
           />
         </DialogContent>
         
@@ -180,6 +268,16 @@ const UserDetailsModal = ({ open, userId, onClose }) => {
           {snackbar.message}
         </Alert>
       </Snackbar>
+      
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmationDialog
+        open={deleteDialogOpen}
+        entityName="User"
+        confirmationText={user ? `Are you sure you want to delete ${user.firstName} ${user.lastName}? This action cannot be undone.` : ''}
+        onCancel={handleCancelDelete}
+        onConfirm={handleConfirmDelete}
+        loading={deleteLoading}
+      />
     </>
   );
 };
