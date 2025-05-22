@@ -34,6 +34,7 @@ import {
 import {
   Edit as EditIcon,
   Delete as DeleteIcon,
+  DeleteForever as DeleteForeverIcon,
   MoreVert as MoreVertIcon,
   Visibility as VisibilityIcon,
   Block as BlockIcon,
@@ -126,6 +127,8 @@ const UserTable = ({ searchTerm, filters, onUserDataChange }) => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [permanentDeleteDialogOpen, setPermanentDeleteDialogOpen] = useState(false);
+  const [permanentDeleteLoading, setPermanentDeleteLoading] = useState(false);
   
   // State for user details modal
   const [userDetailsOpen, setUserDetailsOpen] = useState(false);
@@ -144,28 +147,102 @@ const UserTable = ({ searchTerm, filters, onUserDataChange }) => {
     severity: 'success'
   });
 
+  // State for all users (unfiltered)
+  const [allUsers, setAllUsers] = useState([]);
+
+  // Filter users client-side based on search and filters
+  const getFilteredUsers = React.useCallback(() => {
+    let filteredUsers = [...allUsers];
+
+    // Exclude admin users from display
+    filteredUsers = filteredUsers.filter(user => user.role !== 'admin');
+
+    // Apply search filter
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      filteredUsers = filteredUsers.filter(user =>
+        user.firstName?.toLowerCase().includes(searchLower) ||
+        user.lastName?.toLowerCase().includes(searchLower) ||
+        user.email?.toLowerCase().includes(searchLower) ||
+        user.phone?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // Apply role filter
+    if (filters.role) {
+      filteredUsers = filteredUsers.filter(user => 
+        user.role?.toLowerCase() === filters.role.toLowerCase()
+      );
+    }
+
+    // Apply status filter
+    if (filters.status) {
+      const isActive = filters.status === 'active';
+      filteredUsers = filteredUsers.filter(user => user.active === isActive);
+    }
+
+    // Apply date range filter
+    if (filters.dateRange) {
+      const now = new Date();
+      let startDate;
+
+      switch (filters.dateRange) {
+        case 'today':
+          startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          break;
+        case 'yesterday':
+          startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+          const endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          filteredUsers = filteredUsers.filter(user => {
+            const userDate = new Date(user.createdAt);
+            return userDate >= startDate && userDate < endDate;
+          });
+          return filteredUsers;
+        case 'last7days':
+          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          break;
+        case 'last30days':
+          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          break;
+        case 'last90days':
+          startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+          break;
+        default:
+          break;
+      }
+
+      if (startDate && filters.dateRange !== 'yesterday') {
+        filteredUsers = filteredUsers.filter(user => {
+          const userDate = new Date(user.createdAt);
+          return userDate >= startDate;
+        });
+      }
+    }
+
+    return filteredUsers;
+  }, [allUsers, searchTerm, filters]);
+
+  // Get paginated users from filtered results
+  const getPaginatedUsers = React.useCallback(() => {
+    const filteredUsers = getFilteredUsers();
+    const startIndex = page * rowsPerPage;
+    const endIndex = startIndex + rowsPerPage;
+    return filteredUsers.slice(startIndex, endIndex);
+  }, [getFilteredUsers, page, rowsPerPage]);
+
   // Fetch users data from API
   const fetchUsers = async () => {
     setLoading(true);
     setError(null);
     
     try {
-      const apiPage = page + 1; // API page starts from 1
+      // Fetch all users without server-side filtering since API doesn't support it
       const response = await userService.getAllUsers({
-        page: apiPage,
-        limit: rowsPerPage,
-        search: searchTerm,
-        filters: filters,
+        page: 1,
+        limit: 9999, // Get all users for client-side filtering
       });
       
-      setUsers(response.data.users);
-      setTotalUsers(response.totalUsers);
-      setTotalPages(response.totalPages);
-      
-      // Notify parent component about the data for stats
-      if (onUserDataChange) {
-        onUserDataChange(response);
-      }
+      setAllUsers(response.data.users || []);
     } catch (err) {
       console.error('Error fetching users:', err);
       setError('Failed to load users. Please try again.');
@@ -174,10 +251,40 @@ const UserTable = ({ searchTerm, filters, onUserDataChange }) => {
     }
   };
 
-  // Fetch users when component mounts or when dependencies change
+  // Fetch users when component mounts
   useEffect(() => {
-    fetchUsers();
-  }, [page, rowsPerPage, searchTerm, filters]);
+    if (allUsers.length === 0) {
+      fetchUsers();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Update filtered results when search term, filters, or pagination changes
+  useEffect(() => {
+    if (allUsers.length > 0) {
+      const filteredUsers = getFilteredUsers();
+      setUsers(getPaginatedUsers());
+      setTotalUsers(filteredUsers.length);
+      setTotalPages(Math.ceil(filteredUsers.length / rowsPerPage));
+      
+      // Reset to first page if current page exceeds available pages
+      const maxPages = Math.ceil(filteredUsers.length / rowsPerPage);
+      if (page >= maxPages && maxPages > 0) {
+        setPage(0);
+      }
+      
+      // Notify parent component about the filtered data for stats
+      if (onUserDataChange) {
+        const filteredResponse = {
+          data: {
+            users: filteredUsers
+          },
+          totalUsers: filteredUsers.length
+        };
+        onUserDataChange(filteredResponse);
+      }
+    }
+  }, [getFilteredUsers, getPaginatedUsers, page, rowsPerPage, allUsers, onUserDataChange]);
 
   // Sort the users data based on order and orderBy
   const sortedUsers = React.useMemo(() => {
@@ -264,11 +371,6 @@ const UserTable = ({ searchTerm, filters, onUserDataChange }) => {
     }
   };
 
-  const handleEditUser = () => {
-    // Edit user logic here
-    console.log('Edit user:', selectedUser);
-    handleMenuClose();
-  };
 
   const handleDeleteClick = () => {
     handleMenuClose();
@@ -286,7 +388,7 @@ const UserTable = ({ searchTerm, filters, onUserDataChange }) => {
       // Show success notification
       setSnackbar({
         open: true,
-        message: 'User deleted successfully.',
+        message: 'User deactivated successfully.',
         severity: 'success'
       });
       
@@ -296,12 +398,12 @@ const UserTable = ({ searchTerm, filters, onUserDataChange }) => {
       // Reload the data
       fetchUsers();
     } catch (err) {
-      console.error('Error deleting user:', err);
+      console.error('Error deactivating user:', err);
       
       // Show error notification
       setSnackbar({
         open: true,
-        message: 'Failed to delete user. Please try again.',
+        message: 'Failed to deactivate user. Please try again.',
         severity: 'error'
       });
       
@@ -314,6 +416,55 @@ const UserTable = ({ searchTerm, filters, onUserDataChange }) => {
 
   const handleDeleteCancel = () => {
     setDeleteDialogOpen(false);
+  };
+
+  const handlePermanentDeleteClick = () => {
+    handleMenuClose();
+    setPermanentDeleteDialogOpen(true);
+  };
+
+  const handlePermanentDeleteConfirm = async () => {
+    if (!selectedUser) return;
+    
+    setPermanentDeleteLoading(true);
+    
+    try {
+      await userService.permanentDeleteUser(selectedUser.id);
+      
+      // Show success notification
+      setSnackbar({
+        open: true,
+        message: 'User permanently deleted successfully',
+        severity: 'success'
+      });
+      
+      // Close the delete dialog
+      setPermanentDeleteDialogOpen(false);
+      
+      // Remove the user from the local state immediately for better UX
+      setAllUsers(prevUsers => prevUsers.filter(user => user.id !== selectedUser.id));
+      
+      // Reload the data to ensure consistency
+      fetchUsers();
+    } catch (err) {
+      console.error('Error permanently deleting user:', err);
+      
+      // Show error notification
+      setSnackbar({
+        open: true,
+        message: 'Failed to permanently delete user. Please try again.',
+        severity: 'error'
+      });
+      
+      // Close the delete dialog
+      setPermanentDeleteDialogOpen(false);
+    } finally {
+      setPermanentDeleteLoading(false);
+    }
+  };
+
+  const handlePermanentDeleteCancel = () => {
+    setPermanentDeleteDialogOpen(false);
   };
 
   const handleToggleStatus = async () => {
@@ -565,19 +716,6 @@ const UserTable = ({ searchTerm, filters, onUserDataChange }) => {
                           <VisibilityIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
-                      <Tooltip title="Delete User">
-                        <IconButton
-                          aria-label="delete user"
-                          size="small"
-                          color="error"
-                          onClick={() => {
-                            setSelectedUser(user);
-                            setDeleteDialogOpen(true);
-                          }}
-                        >
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
                       <IconButton
                         aria-label="more options"
                         size="small"
@@ -618,10 +756,6 @@ const UserTable = ({ searchTerm, filters, onUserDataChange }) => {
           <VisibilityIcon fontSize="small" sx={{ mr: 1 }} />
           View Details
         </MenuItem>
-        <MenuItem onClick={handleEditUser}>
-          <EditIcon fontSize="small" sx={{ mr: 1 }} />
-          Edit User
-        </MenuItem>
         {/* Only show role change option for non-admin users */}
         {selectedUser && selectedUser.role !== 'admin' && (
           <MenuItem onClick={handleOpenRoleDialog}>
@@ -642,20 +776,59 @@ const UserTable = ({ searchTerm, filters, onUserDataChange }) => {
             </>
           )}
         </MenuItem>
-        <MenuItem onClick={handleDeleteClick} sx={{ color: 'error.main' }}>
-          <DeleteIcon fontSize="small" sx={{ mr: 1 }} />
-          Delete User
+        <MenuItem onClick={handlePermanentDeleteClick} sx={{ color: 'error.main' }}>
+          <DeleteForeverIcon fontSize="small" sx={{ mr: 1 }} />
+          Permanently Delete
         </MenuItem>
       </Menu>
 
       <DeleteConfirmationDialog
         open={deleteDialogOpen}
         entityName="User"
-        confirmationText={selectedUser ? `Are you sure you want to delete ${selectedUser.firstName} ${selectedUser.lastName}? This action cannot be undone.` : ''}
+        confirmationText={selectedUser ? `Are you sure you want to deactivate ${selectedUser.firstName} ${selectedUser.lastName}? This will disable their account but keep their data.` : ''}
         onCancel={handleDeleteCancel}
         onConfirm={handleDeleteConfirm}
         loading={deleteLoading}
       />
+      
+      {/* Permanent Delete Confirmation Dialog */}
+      <Dialog open={permanentDeleteDialogOpen} onClose={handlePermanentDeleteCancel}>
+        <DialogTitle sx={{ color: 'error.main', display: 'flex', alignItems: 'center' }}>
+          <DeleteForeverIcon sx={{ mr: 1 }} />
+          Permanently Delete User
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {selectedUser && (
+              <>
+                Are you sure you want to permanently delete <strong>{selectedUser.firstName} {selectedUser.lastName}</strong>?
+                <br /><br />
+                <strong>⚠️ WARNING:</strong> This action cannot be undone. All user data including:
+                <br />• Personal information
+                <br />• Order history  
+                <br />• Account settings
+                <br />• All associated records
+                <br /><br />
+                will be permanently removed from the system.
+              </>
+            )}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handlePermanentDeleteCancel} disabled={permanentDeleteLoading}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={handlePermanentDeleteConfirm}
+            color="error"
+            variant="contained"
+            disabled={permanentDeleteLoading}
+            startIcon={permanentDeleteLoading ? <CircularProgress size={16} /> : <DeleteForeverIcon />}
+          >
+            {permanentDeleteLoading ? 'Deleting...' : 'Permanently Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
       
       {/* User Details Modal */}
       <UserDetailsModal

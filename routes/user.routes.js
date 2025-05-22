@@ -37,6 +37,9 @@ router.post(
 // Update a user
 router.patch('/:id', updateUserValidation, userController.updateUser);
 
+// Permanently delete a user (hard delete) - MUST come before generic /:id route
+router.delete('/:id/permanent', userController.permanentDeleteUser);
+
 // Delete a user (soft delete)
 router.delete('/:id', userController.deleteUser);
 

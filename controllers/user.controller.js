@@ -276,3 +276,56 @@ exports.deleteUser = async (req, res, next) => {
     next(error);
   }
 };
+
+// Permanently delete a user (admin only) - Hard delete
+exports.permanentDeleteUser = async (req, res, next) => {
+  try {
+    const userId = req.params.id;
+    
+    // Validate user ID format
+    if (!userId || userId === 'permanent') {
+      return next(new AppError('Invalid user ID provided', 400));
+    }
+
+    const user = await User.findByPk(userId);
+    
+    if (!user) {
+      return next(new AppError('User not found', 404));
+    }
+
+    // Prevent deletion of admin users
+    if (user.role === 'admin') {
+      return next(new AppError('Cannot permanently delete admin users', 403));
+    }
+
+    // Store user info for logging before deletion
+    const userEmail = user.email;
+    const userRole = user.role;
+
+    // Permanently delete the user from database
+    const destroyResult = await user.destroy();
+    
+    // Verify deletion was successful
+    if (!destroyResult) {
+      return next(new AppError('Failed to delete user', 500));
+    }
+
+    logger.info(`Admin permanently deleted user: ${userEmail} (role: ${userRole})`);
+
+    // Return success response
+    return res.status(200).json({
+      status: 'success',
+      message: 'User permanently deleted successfully',
+      data: {
+        deletedUser: {
+          id: userId,
+          email: userEmail,
+          role: userRole
+        }
+      }
+    });
+  } catch (error) {
+    logger.error(`Error in permanentDeleteUser: ${error.message}`);
+    next(error);
+  }
+};

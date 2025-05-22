@@ -10,11 +10,9 @@ import {
   Select,
   MenuItem,
   Chip,
-  Typography,
   Grid,
   IconButton,
   Collapse,
-  useTheme,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -25,7 +23,6 @@ import {
 } from '@mui/icons-material';
 
 const UserFilters = ({ onSearch, onFilter }) => {
-  const theme = useTheme();
   const [searchTerm, setSearchTerm] = useState('');
   const [expandFilters, setExpandFilters] = useState(false);
   const [filters, setFilters] = useState({
@@ -57,7 +54,16 @@ const UserFilters = ({ onSearch, onFilter }) => {
     const newActiveFilters = [];
     
     if (filters.role) {
-      newActiveFilters.push({ field: 'role', value: filters.role, label: `Role: ${filters.role}` });
+      const roleLabels = {
+        'admin': 'Admin',
+        'driver': 'Driver', 
+        'user': 'Customer'
+      };
+      newActiveFilters.push({ 
+        field: 'role', 
+        value: filters.role, 
+        label: `Role: ${roleLabels[filters.role] || filters.role}` 
+      });
     }
     
     if (filters.status) {
@@ -81,7 +87,8 @@ const UserFilters = ({ onSearch, onFilter }) => {
     
     setActiveFilters(newActiveFilters);
     
-    // Call the parent component's filter function
+    // Call the parent component's filter function with raw filters
+    // The UserTable component will handle client-side filtering
     onFilter(filters);
   };
 
@@ -96,16 +103,17 @@ const UserFilters = ({ onSearch, onFilter }) => {
   };
 
   const removeFilter = (field) => {
-    setFilters({
+    const updatedFilters = {
       ...filters,
       [field]: '',
-    });
+    };
+    
+    setFilters(updatedFilters);
     
     // Update active filters list
     setActiveFilters(activeFilters.filter(filter => filter.field !== field));
     
-    // Call parent filter with updated filters
-    const updatedFilters = { ...filters, [field]: '' };
+    // Call parent filter with updated filters (client-side filtering)
     onFilter(updatedFilters);
   };
 
@@ -206,7 +214,7 @@ const UserFilters = ({ onSearch, onFilter }) => {
                 </MenuItem>
                 <MenuItem value="admin">Admin</MenuItem>
                 <MenuItem value="driver">Driver</MenuItem>
-                <MenuItem value="user">User</MenuItem>
+                <MenuItem value="user">Customer</MenuItem>
               </Select>
             </FormControl>
           </Grid>

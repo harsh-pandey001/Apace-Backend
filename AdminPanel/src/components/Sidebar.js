@@ -14,8 +14,6 @@ import {
   useTheme,
   Badge,
   Avatar,
-  Tooltip,
-  Collapse,
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -23,16 +21,11 @@ import {
   LocalShipping as ShippingIcon,
   Settings as SettingsIcon,
   Logout as LogoutIcon,
-  ExpandLess,
-  ExpandMore,
-  PersonOutline,
-  AdminPanelSettings,
-  DirectionsCar,
   Help,
   Info,
 } from '@mui/icons-material';
 
-// Updated menu items with nested structure and badges
+// Updated menu items with flat structure and badges
 const menuItems = [
   { 
     text: 'Dashboard', 
@@ -45,11 +38,6 @@ const menuItems = [
     icon: <PeopleIcon />, 
     path: '/users',
     badge: 15, // New users count
-    children: [
-      { text: 'All Users', icon: <PersonOutline />, path: '/users' },
-      { text: 'Customers', icon: <PersonOutline />, path: '/users/customers' },
-      { text: 'Drivers', icon: <DirectionsCar />, path: '/users/drivers' },
-    ]
   },
   { 
     text: 'Shipments', 
@@ -75,18 +63,6 @@ function Sidebar({ drawerWidth, mobileOpen, onDrawerToggle, onRouteChange }) {
   const theme = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
-  
-  // State for tracking which nested menus are open
-  const [openSubMenu, setOpenSubMenu] = React.useState(
-    menuItems.findIndex(item => 
-      item.children && (location.pathname === item.path || 
-      item.children.some(child => location.pathname === child.path))
-    )
-  );
-
-  const handleSubMenuToggle = (index) => {
-    setOpenSubMenu(openSubMenu === index ? -1 : index);
-  };
 
   const handleLogout = () => {
     // Handle logout logic here
@@ -127,127 +103,63 @@ function Sidebar({ drawerWidth, mobileOpen, onDrawerToggle, onRouteChange }) {
       
       {/* Main Menu */}
       <List sx={{ px: 1 }}>
-        {menuItems.map((item, index) => (
-          <React.Fragment key={item.text}>
-            <ListItem disablePadding sx={{ display: 'block', mb: 0.5 }}>
-              <ListItemButton
-                selected={location.pathname === item.path || (item.children && item.children.some(child => location.pathname === child.path))}
-                onClick={() => {
-                  if (item.children) {
-                    handleSubMenuToggle(index);
-                  } else {
-                    navigate(item.path);
-                    // Close sidebar on mobile if prop is provided
-                    if (onDrawerToggle) {
-                      onDrawerToggle();
-                    }
-                  }
-                }}
-                sx={{
-                  px: 2,
-                  py: 1.5,
-                  borderRadius: '8px',
-                  '&.Mui-selected': {
-                    backgroundColor: `${theme.palette.primary.main}15`,
-                    color: theme.palette.primary.main,
-                    '&:hover': {
-                      backgroundColor: `${theme.palette.primary.main}25`,
-                    },
-                  },
+        {menuItems.map((item) => (
+          <ListItem key={item.text} disablePadding sx={{ display: 'block', mb: 0.5 }}>
+            <ListItemButton
+              selected={location.pathname === item.path}
+              onClick={() => {
+                navigate(item.path);
+                // Close sidebar on mobile after navigation
+                if (onRouteChange) {
+                  onRouteChange();
+                }
+              }}
+              sx={{
+                px: 2,
+                py: 1.5,
+                borderRadius: '8px',
+                '&.Mui-selected': {
+                  backgroundColor: `${theme.palette.primary.main}15`,
+                  color: theme.palette.primary.main,
                   '&:hover': {
-                    backgroundColor: theme.palette.mode === 'dark' 
-                      ? 'rgba(255, 255, 255, 0.08)' 
-                      : 'rgba(0, 0, 0, 0.04)',
+                    backgroundColor: `${theme.palette.primary.main}25`,
                   },
+                },
+                '&:hover': {
+                  backgroundColor: theme.palette.mode === 'dark' 
+                    ? 'rgba(255, 255, 255, 0.08)' 
+                    : 'rgba(0, 0, 0, 0.04)',
+                },
+              }}
+            >
+              <ListItemIcon 
+                sx={{ 
+                  color: location.pathname === item.path
+                    ? theme.palette.primary.main 
+                    : 'inherit',
+                  minWidth: 40
                 }}
               >
-                <ListItemIcon 
-                  sx={{ 
-                    color: location.pathname === item.path || (item.children && item.children.some(child => location.pathname === child.path))
-                      ? theme.palette.primary.main 
-                      : 'inherit',
-                    minWidth: 40
-                  }}
-                >
-                  {item.badge ? (
-                    <Badge badgeContent={item.badge} color="error">
-                      {item.icon}
-                    </Badge>
-                  ) : (
-                    item.icon
-                  )}
-                </ListItemIcon>
-                <ListItemText 
-                  primary={item.text} 
-                  sx={{ 
-                    '& .MuiListItemText-primary': { 
-                      fontWeight: location.pathname === item.path || (item.children && item.children.some(child => location.pathname === child.path))
-                        ? 600 
-                        : 400 
-                    } 
-                  }}
-                />
-                {item.children && (
-                  openSubMenu === index ? <ExpandLess /> : <ExpandMore />
+                {item.badge ? (
+                  <Badge badgeContent={item.badge} color="error">
+                    {item.icon}
+                  </Badge>
+                ) : (
+                  item.icon
                 )}
-              </ListItemButton>
-            </ListItem>
-            
-            {/* Submenu */}
-            {item.children && (
-              <Collapse in={openSubMenu === index} timeout="auto" unmountOnExit>
-                <List component="div" disablePadding sx={{ mt: 0.5, mb: 1 }}>
-                  {item.children.map((child) => (
-                    <ListItem key={child.text} disablePadding sx={{ display: 'block', pl: 2 }}>
-                      <Tooltip title={child.text} placement="right" arrow>
-                        <ListItemButton
-                          selected={location.pathname === child.path}
-                          onClick={() => navigate(child.path)}
-                          sx={{
-                            px: 2,
-                            py: 1,
-                            borderRadius: '8px',
-                            '&.Mui-selected': {
-                              backgroundColor: `${theme.palette.primary.main}15`,
-                              color: theme.palette.primary.main,
-                              '&:hover': {
-                                backgroundColor: `${theme.palette.primary.main}25`,
-                              },
-                            },
-                            '&:hover': {
-                              backgroundColor: theme.palette.mode === 'dark' 
-                                ? 'rgba(255, 255, 255, 0.08)' 
-                                : 'rgba(0, 0, 0, 0.04)',
-                            },
-                          }}
-                        >
-                          <ListItemIcon 
-                            sx={{ 
-                              color: location.pathname === child.path 
-                                ? theme.palette.primary.main 
-                                : 'inherit',
-                              minWidth: 40
-                            }}
-                          >
-                            {child.icon}
-                          </ListItemIcon>
-                          <ListItemText 
-                            primary={child.text} 
-                            sx={{ 
-                              '& .MuiListItemText-primary': { 
-                                fontWeight: location.pathname === child.path ? 600 : 400,
-                                fontSize: '0.9rem'
-                              } 
-                            }}
-                          />
-                        </ListItemButton>
-                      </Tooltip>
-                    </ListItem>
-                  ))}
-                </List>
-              </Collapse>
-            )}
-          </React.Fragment>
+              </ListItemIcon>
+              <ListItemText 
+                primary={item.text} 
+                sx={{ 
+                  '& .MuiListItemText-primary': { 
+                    fontWeight: location.pathname === item.path
+                      ? 600 
+                      : 400 
+                  } 
+                }}
+              />
+            </ListItemButton>
+          </ListItem>
         ))}
       </List>
       

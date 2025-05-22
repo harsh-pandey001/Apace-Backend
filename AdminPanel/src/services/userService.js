@@ -14,25 +14,12 @@ export const userService = {
    * @returns {Promise} - Promise with user data
    */
   getAllUsers: async (params = {}) => {
-    const { page = 1, limit = 10, search = '', filters = {} } = params;
+    const { page = 1, limit = 10 } = params;
     
-    // Build query parameters
+    // Build query parameters - only use pagination since backend doesn't support filtering
     const queryParams = new URLSearchParams();
     queryParams.append('page', page);
     queryParams.append('limit', limit);
-    
-    if (search) {
-      queryParams.append('search', search);
-    }
-    
-    // Add any other filters
-    if (filters.role) {
-      queryParams.append('role', filters.role);
-    }
-    
-    if (filters.active !== undefined) {
-      queryParams.append('active', filters.active);
-    }
     
     try {
       const response = await api.get(`/users?${queryParams.toString()}`);
@@ -90,7 +77,7 @@ export const userService = {
   },
   
   /**
-   * Delete a user
+   * Delete a user (soft delete - deactivate)
    * @param {string} id - User ID
    * @returns {Promise} - Promise with deletion status
    */
@@ -100,6 +87,21 @@ export const userService = {
       return response.data;
     } catch (error) {
       console.error(`Error deleting user ${id}:`, error);
+      throw error;
+    }
+  },
+  
+  /**
+   * Permanently delete a user (hard delete)
+   * @param {string} id - User ID
+   * @returns {Promise} - Promise with deletion status
+   */
+  permanentDeleteUser: async (id) => {
+    try {
+      const response = await api.delete(`/users/${id}/permanent`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error permanently deleting user ${id}:`, error);
       throw error;
     }
   },

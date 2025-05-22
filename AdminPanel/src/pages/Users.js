@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -28,7 +28,7 @@ import {
 } from '@mui/icons-material';
 import UserFilters from '../components/UserFilters';
 import UserTable from '../components/UserTable';
-import UserRoleChart from '../components/charts/UserRoleChart';
+import OptimizedUserRoleChart from '../components/charts/OptimizedUserRoleChart';
 import userService from '../services/userService';
 
 function Users() {
@@ -90,7 +90,7 @@ function Users() {
   }, []);
 
   // Handle user data changes from the UserTable component
-  const handleUserDataChange = (userData) => {
+  const handleUserDataChange = useCallback((userData) => {
     // This function will be called when the UserTable component fetches data
     // Use it to update user statistics without making another API call
     if (userData && userData.data && userData.data.users) {
@@ -123,7 +123,7 @@ function Users() {
         roleDistribution
       }));
     }
-  };
+  }, []);
 
   const handleAddUserOpen = () => {
     setOpenAddUserDialog(true);
@@ -142,13 +142,13 @@ function Users() {
     setOpenAddUserDialog(false);
   };
 
-  const handleSearch = (term) => {
+  const handleSearch = useCallback((term) => {
     setSearchTerm(term);
-  };
+  }, []);
 
-  const handleFilter = (filterCriteria) => {
+  const handleFilter = useCallback((filterCriteria) => {
     setFilters(filterCriteria);
-  };
+  }, []);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -317,9 +317,7 @@ function Users() {
       )}
 
       {/* Role Distribution Chart */}
-      {Object.keys(userStats.roleDistribution).length > 0 && (
-        <UserRoleChart roleDistribution={userStats.roleDistribution} />
-      )}
+      <OptimizedUserRoleChart roleDistribution={userStats.roleDistribution} />
 
       {/* Search and Filters */}
       <UserFilters onSearch={handleSearch} onFilter={handleFilter} />
