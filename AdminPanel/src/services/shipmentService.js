@@ -106,6 +106,31 @@ export const calculateShipmentMetrics = (shipments) => {
 };
 
 /**
+ * Get shipments created in the last 24 hours for badge count
+ * @returns {Promise} - Promise with new shipments count
+ */
+export const getLast24HoursShipmentsCount = async () => {
+  try {
+    const response = await getAdminShipments({ limit: 9999 });
+    const shipments = response.data?.shipments || [];
+    
+    // Get last 24 hours timestamp
+    const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    
+    // Count shipments created in last 24 hours
+    const newShipmentsLast24h = shipments.filter(shipment => {
+      const createdDate = new Date(shipment.createdAt);
+      return createdDate >= last24Hours;
+    }).length;
+    
+    return newShipmentsLast24h;
+  } catch (error) {
+    console.error('Error getting last 24h shipments count:', error);
+    return 0;
+  }
+};
+
+/**
  * Format dates to a human-readable format
  * @param {string} dateString - ISO date string
  * @returns {string} - Formatted date string

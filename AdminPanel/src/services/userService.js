@@ -147,6 +147,34 @@ export const userService = {
       console.error('Error getting user stats:', error);
       throw error;
     }
+  },
+  
+  /**
+   * Get users created in the last 24 hours for badge count
+   * @returns {Promise} - Promise with new users count
+   */
+  getLast24HoursUsersCount: async () => {
+    try {
+      const response = await api.get('/users?limit=9999');
+      const { users } = response.data.data;
+      
+      // Filter users excluding admins
+      const nonAdminUsers = users.filter(user => user.role !== 'admin');
+      
+      // Get last 24 hours timestamp
+      const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      
+      // Count users created in last 24 hours
+      const newUsersLast24h = nonAdminUsers.filter(user => {
+        const createdDate = new Date(user.createdAt);
+        return createdDate >= last24Hours;
+      }).length;
+      
+      return newUsersLast24h;
+    } catch (error) {
+      console.error('Error getting last 24h users count:', error);
+      return 0;
+    }
   }
 };
 

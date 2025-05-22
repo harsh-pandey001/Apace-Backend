@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
@@ -24,9 +24,11 @@ import {
   Help,
   Info,
 } from '@mui/icons-material';
+import userService from '../services/userService';
+import { getLast24HoursShipmentsCount } from '../services/shipmentService';
 
-// Updated menu items with flat structure and badges
-const menuItems = [
+// Menu items structure - badges will be populated dynamically
+const getMenuItems = (usersBadge, shipmentsBadge) => [
   { 
     text: 'Dashboard', 
     icon: <DashboardIcon />, 
@@ -37,13 +39,13 @@ const menuItems = [
     text: 'Users', 
     icon: <PeopleIcon />, 
     path: '/users',
-    badge: 15, // New users count
+    badge: usersBadge > 0 ? usersBadge : null, // New users in last 24h
   },
   { 
     text: 'Shipments', 
     icon: <ShippingIcon />, 
     path: '/shipments',
-    badge: 8, // Pending shipments
+    badge: shipmentsBadge > 0 ? shipmentsBadge : null, // New shipments in last 24h
   },
   { 
     text: 'Settings', 
@@ -63,6 +65,39 @@ function Sidebar({ drawerWidth, mobileOpen, onDrawerToggle, onRouteChange }) {
   const theme = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
+  
+  // State for dynamic badge counts
+  const [usersBadgeCount, setUsersBadgeCount] = useState(0);
+  const [shipmentsBadgeCount, setShipmentsBadgeCount] = useState(0);
+  
+  // Fetch badge counts on component mount and set up refresh interval
+  useEffect(() => {
+    const fetchBadgeCounts = async () => {
+      try {
+        const [usersCount, shipmentsCount] = await Promise.all([
+          userService.getLast24HoursUsersCount(),
+          getLast24HoursShipmentsCount()
+        ]);
+        
+        setUsersBadgeCount(usersCount);
+        setShipmentsBadgeCount(shipmentsCount);
+      } catch (error) {
+        console.error('Error fetching badge counts:', error);
+      }
+    };
+    
+    // Initial fetch
+    fetchBadgeCounts();
+    
+    // Set up interval to refresh badge counts every 5 minutes
+    const intervalId = setInterval(fetchBadgeCounts, 5 * 60 * 1000);
+    
+    // Cleanup interval on component unmount
+    return () => clearInterval(intervalId);
+  }, []);
+  
+  // Get menu items with current badge counts
+  const menuItems = getMenuItems(usersBadgeCount, shipmentsBadgeCount);
 
   const handleLogout = () => {
     // Handle logout logic here
