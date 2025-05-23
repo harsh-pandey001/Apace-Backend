@@ -44,5 +44,10 @@ exports.signupValidation = [
   
   body('email')
     .isEmail()
-    .withMessage('Please provide a valid email address')
+    .withMessage('Please provide a valid email address'),
+  
+  body('role')
+    .optional()
+    .isIn(['user', 'driver', 'admin'])
+    .withMessage('Role must be either user, driver, or admin')
 ];

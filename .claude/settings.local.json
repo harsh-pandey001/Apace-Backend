@@ -26,7 +26,10 @@
       "Bash(sudo lsof:*)",
       "Bash(sequelize-cli:*)",
       "Bash(npx sequelize-cli:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(sudo systemctl start:*)",
+      "Bash(docker:*)",
+      "Bash(systemctl:*)"
     ],
     "deny": []
   }

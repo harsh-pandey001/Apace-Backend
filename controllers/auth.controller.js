@@ -131,7 +131,7 @@ exports.signup = async (req, res, next) => {
       });
     }
 
-    const { phone, firstName, lastName, email } = req.body;
+    const { phone, firstName, lastName, email, role } = req.body;
 
     // Check if phone already exists
     const existingUserWithPhone = await User.findOne({ where: { phone } });
@@ -151,7 +151,7 @@ exports.signup = async (req, res, next) => {
       lastName,
       email,
       phone,
-      role: 'user'
+      role: role || 'user' // Use provided role or default to 'user'
     });
 
     logger.info(`New user registered: ${newUser.email}`);
