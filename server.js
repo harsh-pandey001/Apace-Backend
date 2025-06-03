@@ -1,5 +1,6 @@
 require('dotenv').config();
 const express = require('express');
+const path = require('path');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
@@ -25,18 +26,37 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Middleware
-app.use(helmet()); // Set security HTTP headers
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+      "frame-ancestors": ["'self'", "http://localhost:3000", "https://localhost:3000"]
+    }
+  },
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+})); // Set security HTTP headers
 app.use(morgan('combined', { stream: { write: message => logger.info(message.trim()) } }));
 app.use(express.json({ limit: '10kb' })); // Body parser for JSON payloads
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
     ? process.env.CORS_ORIGIN 
-    : '*',
+    : ['http://localhost:3000', 'http://127.0.0.1:3000'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
 }));
 app.use(compression());
+
+// Serve uploaded files statically with CORS headers
+app.use('/uploads', (req, res, next) => {
+  res.header('Access-Control-Allow-Origin', process.env.NODE_ENV === 'production' 
+    ? process.env.CORS_ORIGIN 
+    : 'http://localhost:3000');
+  res.header('Access-Control-Allow-Methods', 'GET');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  next();
+}, express.static(path.join(__dirname, 'uploads')));
 
 // Rate limiting
 const limiter = rateLimit({

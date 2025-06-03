@@ -19,6 +19,7 @@ import {
   Dashboard as DashboardIcon,
   People as PeopleIcon,
   LocalShipping as ShippingIcon,
+  Description as DocumentIcon,
   Settings as SettingsIcon,
   Logout as LogoutIcon,
   Help,
@@ -26,9 +27,10 @@ import {
 } from '@mui/icons-material';
 import userService from '../services/userService';
 import { getLast24HoursShipmentsCount } from '../services/shipmentService';
+import driverDocumentService from '../services/driverDocumentService';
 
 // Menu items structure - badges will be populated dynamically
-const getMenuItems = (usersBadge, shipmentsBadge) => [
+const getMenuItems = (usersBadge, shipmentsBadge, documentsBadge) => [
   { 
     text: 'Dashboard', 
     icon: <DashboardIcon />, 
@@ -46,6 +48,12 @@ const getMenuItems = (usersBadge, shipmentsBadge) => [
     icon: <ShippingIcon />, 
     path: '/shipments',
     badge: shipmentsBadge > 0 ? shipmentsBadge : null, // New shipments in last 24h
+  },
+  { 
+    text: 'Driver Documents', 
+    icon: <DocumentIcon />, 
+    path: '/driver-documents',
+    badge: documentsBadge > 0 ? documentsBadge : null, // Pending documents
   },
   { 
     text: 'Settings', 
@@ -69,18 +77,21 @@ function Sidebar({ drawerWidth, mobileOpen, onDrawerToggle, onRouteChange }) {
   // State for dynamic badge counts
   const [usersBadgeCount, setUsersBadgeCount] = useState(0);
   const [shipmentsBadgeCount, setShipmentsBadgeCount] = useState(0);
+  const [documentsBadgeCount, setDocumentsBadgeCount] = useState(0);
   
   // Fetch badge counts on component mount and set up refresh interval
   useEffect(() => {
     const fetchBadgeCounts = async () => {
       try {
-        const [usersCount, shipmentsCount] = await Promise.all([
+        const [usersCount, shipmentsCount, documentsStats] = await Promise.all([
           userService.getLast24HoursUsersCount(),
-          getLast24HoursShipmentsCount()
+          getLast24HoursShipmentsCount(),
+          driverDocumentService.getDocumentStatistics()
         ]);
         
         setUsersBadgeCount(usersCount);
         setShipmentsBadgeCount(shipmentsCount);
+        setDocumentsBadgeCount(documentsStats.data?.pending_documents || 0);
       } catch (error) {
         console.error('Error fetching badge counts:', error);
       }
@@ -97,7 +108,7 @@ function Sidebar({ drawerWidth, mobileOpen, onDrawerToggle, onRouteChange }) {
   }, []);
   
   // Get menu items with current badge counts
-  const menuItems = getMenuItems(usersBadgeCount, shipmentsBadgeCount);
+  const menuItems = getMenuItems(usersBadgeCount, shipmentsBadgeCount, documentsBadgeCount);
 
   const handleLogout = () => {
     // Handle logout logic here

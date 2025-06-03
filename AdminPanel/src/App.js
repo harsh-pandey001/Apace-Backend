@@ -12,6 +12,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Users = lazy(() => import('./pages/Users'));
 const Shipments = lazy(() => import('./pages/Shipments'));
+const DriverDocuments = lazy(() => import('./pages/DriverDocuments'));
 const Preferences = lazy(() => import('./pages/Preferences'));
 const Login = lazy(() => import('./pages/auth/Login'));
 
@@ -252,6 +253,16 @@ function App() {
                 <ProtectedRoute>
                   <AuthenticatedLayout>
                     <Shipments />
+                  </AuthenticatedLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/driver-documents"
+              element={
+                <ProtectedRoute adminOnly>
+                  <AuthenticatedLayout>
+                    <DriverDocuments />
                   </AuthenticatedLayout>
                 </ProtectedRoute>
               }
