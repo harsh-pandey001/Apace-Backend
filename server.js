@@ -18,6 +18,7 @@ const userRoutes = require('./routes/user.routes');
 const shipmentRoutes = require('./routes/shipment.routes');
 const addressRoutes = require('./routes/address.routes');
 const preferencesRoutes = require('./routes/preferences.routes');
+const driverDocumentRoutes = require('./routes/driverDocument.routes');
 
 // Initialize Express app
 const app = express();
@@ -60,6 +61,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/shipments', shipmentRoutes);
 app.use('/api/addresses', addressRoutes);
 app.use('/api/preferences', preferencesRoutes);
+app.use('/api', driverDocumentRoutes);
 
 // Error handling middleware (should be last)
 app.use(errorHandler);

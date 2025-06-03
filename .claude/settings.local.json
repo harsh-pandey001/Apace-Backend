@@ -32,5 +32,6 @@
       "Bash(systemctl:*)"
     ],
     "deny": []
-  }
+  },
+  "enableAllProjectMcpServers": false
 }

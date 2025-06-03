@@ -5,6 +5,7 @@ const Vehicle = require('./vehicle.model');
 const Address = require('./address.model');
 const UserPreferences = require('./userPreferences.model');
 const OtpVerification = require('./otpVerification.model');
+const DriverDocument = require('./driverDocument.model')(sequelize);
 
 // Define model associations here
 User.hasMany(Shipment, { foreignKey: 'userId', as: 'shipments' });
@@ -21,6 +22,10 @@ Address.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 User.hasOne(UserPreferences, { foreignKey: 'userId', as: 'preferences' });
 UserPreferences.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
+// DriverDocument associations
+User.hasOne(DriverDocument, { foreignKey: 'driver_id', as: 'driverDocument' });
+DriverDocument.belongsTo(User, { foreignKey: 'driver_id', as: 'driver' });
+
 module.exports = {
   sequelize,
   User,
@@ -28,5 +33,6 @@ module.exports = {
   Vehicle,
   Address,
   UserPreferences,
-  OtpVerification
+  OtpVerification,
+  DriverDocument
 };

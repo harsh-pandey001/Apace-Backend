@@ -1,0 +1,7 @@
+node_modules/
+AdminPanel/
+mysql-data/
+*.min.js
+build/
+dist/
+coverage/
