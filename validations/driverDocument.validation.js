@@ -65,6 +65,20 @@ const driverDocumentValidation = {
       .optional()
       .isUUID()
       .withMessage('Rejected by must be a valid UUID')
+  ],
+
+  // Validation for document withdrawal
+  withdrawDocument: [
+    param('driverId')
+      .notEmpty()
+      .withMessage('Driver ID is required')
+      .isUUID()
+      .withMessage('Driver ID must be a valid UUID'),
+    body('documentType')
+      .notEmpty()
+      .withMessage('Document type is required')
+      .isIn(['drivingLicense', 'passportPhoto', 'vehicleRC', 'insurancePaper'])
+      .withMessage('Document type must be one of: drivingLicense, passportPhoto, vehicleRC, insurancePaper')
   ]
 };
 

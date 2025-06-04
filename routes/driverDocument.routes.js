@@ -33,6 +33,13 @@ router.get('/driver/documents/:driverId',
   driverDocumentController.getDriverDocuments
 );
 
+router.post('/driver/documents/:driverId/withdraw',
+  protect,
+  ...driverDocumentValidation.withdrawDocument,
+  validate,
+  driverDocumentController.withdrawDocument
+);
+
 // Admin Document Review Routes (require admin role)
 router.get('/admin/documents/pending',
   protect,

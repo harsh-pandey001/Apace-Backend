@@ -1,5 +1,6 @@
 const { DriverDocument, User } = require('../models');
 const fs = require('fs');
+const path = require('path');
 
 const driverDocumentController = {
   // Upload driver documents
@@ -167,6 +168,137 @@ const driverDocumentController = {
       res.status(500).json({
         success: false,
         message: 'Failed to retrieve driver documents',
+        error: error.message
+      });
+    }
+  },
+
+  // Withdraw a specific document
+  withdrawDocument: async (req, res) => {
+    try {
+      const { driverId } = req.params;
+      const { documentType } = req.body;
+      const requestingUserId = req.user?.id;
+
+      // Validate document type
+      const validDocumentTypes = ['drivingLicense', 'passportPhoto', 'vehicleRC', 'insurancePaper'];
+      if (!documentType || !validDocumentTypes.includes(documentType)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid document type. Valid options: drivingLicense, passportPhoto, vehicleRC, insurancePaper'
+        });
+      }
+
+      // Check if driver exists
+      const driver = await User.findByPk(driverId);
+      if (!driver) {
+        return res.status(404).json({
+          success: false,
+          message: 'Driver not found'
+        });
+      }
+
+      // Verify that the requesting user is the driver (JWT validation)
+      if (requestingUserId !== driverId) {
+        return res.status(403).json({
+          success: false,
+          message: 'You can only withdraw your own documents'
+        });
+      }
+
+      // Get driver documents
+      const driverDocument = await DriverDocument.findOne({
+        where: { driver_id: driverId }
+      });
+
+      if (!driverDocument) {
+        return res.status(404).json({
+          success: false,
+          message: 'No documents found for this driver'
+        });
+      }
+
+      // Map document types to database fields
+      const documentFieldMap = {
+        drivingLicense: 'driving_license_path',
+        passportPhoto: 'passport_photo_path',
+        vehicleRC: 'vehicle_rc_path',
+        insurancePaper: 'insurance_paper_path'
+      };
+
+      const documentField = documentFieldMap[documentType];
+      const currentDocumentPath = driverDocument[documentField];
+
+      // Check if document exists
+      if (!currentDocumentPath) {
+        return res.status(400).json({
+          success: false,
+          message: `${documentType} has not been uploaded yet`
+        });
+      }
+
+      // Optional: Prevent withdrawal if document is already verified
+      // Uncomment the following lines if you want to prevent withdrawal of verified documents
+      /*
+      if (driverDocument.status === 'verified') {
+        return res.status(400).json({
+          success: false,
+          message: 'Cannot withdraw documents that have already been verified'
+        });
+      }
+      */
+
+      // Remove the physical file if it exists
+      if (fs.existsSync(currentDocumentPath)) {
+        try {
+          fs.unlinkSync(currentDocumentPath);
+        } catch (fileError) {
+          console.error('Error deleting file:', fileError);
+          // Continue with database update even if file deletion fails
+        }
+      }
+
+      // Update the document record - clear only the specific document
+      const updateData = {
+        [documentField]: null,
+        updated_at: new Date()
+      };
+
+      // Check if this was the last document - if so, reset status
+      const remainingDocuments = [
+        driverDocument.driving_license_path,
+        driverDocument.passport_photo_path,
+        driverDocument.vehicle_rc_path,
+        driverDocument.insurance_paper_path
+      ].filter(docPath => docPath && docPath !== currentDocumentPath);
+
+      if (remainingDocuments.length === 0) {
+        // If no documents remain, reset all status fields
+        updateData.status = 'pending';
+        updateData.rejection_reason = null;
+        updateData.verified_at = null;
+        updateData.rejected_at = null;
+        updateData.verified_by = null;
+        updateData.rejected_by = null;
+      }
+
+      await driverDocument.update(updateData);
+
+      res.status(200).json({
+        success: true,
+        message: `${documentType} has been withdrawn successfully`,
+        data: {
+          withdrawnDocument: documentType,
+          remainingDocuments: remainingDocuments.length,
+          newStatus: updateData.status || driverDocument.status
+        }
+      });
+
+    } catch (error) {
+      console.error('Withdraw document error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to withdraw document',
         error: error.message
       });
     }
