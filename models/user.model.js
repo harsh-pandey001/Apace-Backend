@@ -47,6 +47,11 @@ const User = sequelize.define('User', {
   active: {
     type: DataTypes.BOOLEAN,
     defaultValue: true
+  },
+  availability_status: {
+    type: DataTypes.ENUM('online', 'offline'),
+    allowNull: false,
+    defaultValue: 'offline'
   }
 }, {
   timestamps: true,
