@@ -26,6 +26,10 @@ UserPreferences.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 User.hasOne(DriverDocument, { foreignKey: 'driver_id', as: 'driverDocument' });
 DriverDocument.belongsTo(User, { foreignKey: 'driver_id', as: 'driver' });
 
+// Vehicle-Driver associations
+Vehicle.belongsTo(User, { foreignKey: 'driverId', as: 'driver' });
+User.hasMany(Vehicle, { foreignKey: 'driverId', as: 'vehicles' });
+
 module.exports = {
   sequelize,
   User,
