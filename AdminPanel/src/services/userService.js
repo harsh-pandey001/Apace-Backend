@@ -175,6 +175,25 @@ export const userService = {
       console.error('Error getting last 24h users count:', error);
       return 0;
     }
+  },
+
+  /**
+   * Get all drivers (users with role 'driver')
+   * @returns {Promise} - Promise with driver data
+   */
+  getDrivers: async () => {
+    try {
+      const response = await api.get('/users?limit=9999');
+      const { users } = response.data.data;
+      
+      // Filter only drivers
+      const drivers = users.filter(user => user.role === 'driver' && user.active);
+      
+      return { data: { drivers } };
+    } catch (error) {
+      console.error('Error fetching drivers:', error);
+      throw error;
+    }
   }
 };
 

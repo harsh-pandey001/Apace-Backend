@@ -46,6 +46,26 @@ export const deleteAdminShipment = async (shipmentId) => {
 };
 
 /**
+ * Assign a shipment to a driver and vehicle (admin only)
+ * @param {string} shipmentId - The ID of the shipment to assign
+ * @param {Object} assignmentData - Assignment details
+ * @param {string} assignmentData.vehicleId - The ID of the vehicle
+ * @param {string} assignmentData.driverId - The ID of the driver
+ * @param {string} assignmentData.estimatedDeliveryDate - Estimated delivery date
+ * @param {string} assignmentData.notes - Optional assignment notes
+ * @returns {Promise} - Promise resolving to the updated shipment with assignment details
+ */
+export const assignShipment = async (shipmentId, assignmentData) => {
+  try {
+    const response = await api.patch(`/shipments/admin/assign/${shipmentId}`, assignmentData);
+    return response.data;
+  } catch (error) {
+    console.error('Error assigning shipment:', error);
+    throw error;
+  }
+};
+
+/**
  * Calculate summary metrics from shipment data
  * @param {Array} shipments - Array of shipment objects
  * @returns {Object} - Object containing metrics

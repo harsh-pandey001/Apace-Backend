@@ -29,7 +29,11 @@
       "Bash(grep:*)",
       "Bash(sudo systemctl start:*)",
       "Bash(docker:*)",
-      "Bash(systemctl:*)"
+      "Bash(systemctl:*)",
+      "Bash(npx eslint:*)",
+      "Bash(timeout 10s npm start)",
+      "Bash(timeout 15s npm start)",
+      "Bash(PORT=3001 timeout 15s npm start:*)"
     ],
     "deny": []
   },

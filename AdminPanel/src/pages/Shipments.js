@@ -38,10 +38,15 @@ import {
   Email as EmailIcon,
   Phone as PhoneIcon,
   Visibility as VisibilityIcon,
-  Delete as DeleteIcon
+  Delete as DeleteIcon,
+  Assignment as AssignmentIcon
 } from '@mui/icons-material';
-import { getAdminShipments, formatDate, deleteAdminShipment } from '../services/shipmentService';
+import { getAdminShipments, formatDate, deleteAdminShipment, assignShipment } from '../services/shipmentService';
+import { userService } from '../services/userService';
+import { vehicleService } from '../services/vehicleService';
 import ShipmentDetailsModal from '../components/ShipmentDetailsModal';
+import ShipmentAssignmentDialog from '../components/ShipmentAssignmentDialog';
+import ShipmentAssignmentSuccessModal from '../components/ShipmentAssignmentSuccessModal';
 
 function Shipments() {
   const [shipments, setShipments] = useState([]);
@@ -73,6 +78,21 @@ function Shipments() {
     severity: 'success'
   });
 
+  // State for shipment assignment
+  const [assignmentDialog, setAssignmentDialog] = useState({
+    open: false,
+    shipment: null
+  });
+  const [assignmentLoading, setAssignmentLoading] = useState(false);
+  const [successModal, setSuccessModal] = useState({
+    open: false,
+    assignmentData: null
+  });
+  
+  // Data for assignment dropdowns
+  const [drivers, setDrivers] = useState([]);
+  const [vehicles, setVehicles] = useState([]);
+
   // Fetch shipments data
   const fetchShipments = async () => {
     setLoading(true);
@@ -94,9 +114,30 @@ function Shipments() {
     }
   };
 
+  // Fetch drivers and vehicles for assignment
+  const fetchDriversAndVehicles = async () => {
+    try {
+      const [driversResponse, vehiclesResponse] = await Promise.all([
+        userService.getDrivers(),
+        vehicleService.getAvailableVehicles()
+      ]);
+      
+      setDrivers(driversResponse.data.drivers || []);
+      setVehicles(vehiclesResponse.data.vehicles || []);
+    } catch (error) {
+      console.error('Error fetching drivers and vehicles:', error);
+      setSnackbar({
+        open: true,
+        message: 'Failed to load drivers and vehicles data',
+        severity: 'warning'
+      });
+    }
+  };
+
   // Load data when component mounts
   useEffect(() => {
     fetchShipments();
+    fetchDriversAndVehicles();
   }, []);
 
   // Filter shipments based on tab selection and search query
@@ -218,6 +259,72 @@ function Shipments() {
   const handleSnackbarClose = (event, reason) => {
     if (reason === 'clickaway') return;
     setSnackbar({ ...snackbar, open: false });
+  };
+
+  // Handle opening the assignment dialog
+  const handleOpenAssignmentDialog = (shipment) => {
+    setAssignmentDialog({
+      open: true,
+      shipment
+    });
+  };
+
+  // Handle closing the assignment dialog
+  const handleCloseAssignmentDialog = () => {
+    setAssignmentDialog({
+      open: false,
+      shipment: null
+    });
+  };
+
+  // Handle shipment assignment
+  const handleAssignShipment = async (assignmentData) => {
+    if (!assignmentDialog.shipment) return;
+
+    setAssignmentLoading(true);
+
+    try {
+      const response = await assignShipment(assignmentDialog.shipment.id, assignmentData);
+      
+      // Close assignment dialog
+      handleCloseAssignmentDialog();
+      
+      // Show success modal with assignment details
+      setSuccessModal({
+        open: true,
+        assignmentData: response.data
+      });
+      
+      // Refresh shipments list
+      fetchShipments();
+      
+    } catch (error) {
+      // Show error message
+      setSnackbar({
+        open: true,
+        message: `Failed to assign shipment: ${error.response?.data?.message || 'Unknown error'}`,
+        severity: 'error'
+      });
+    } finally {
+      setAssignmentLoading(false);
+    }
+  };
+
+  // Handle closing success modal
+  const handleCloseSuccessModal = () => {
+    setSuccessModal({
+      open: false,
+      assignmentData: null
+    });
+  };
+
+  // Handle "Go to Shipment" from success modal
+  const handleGoToShipment = (shipmentId) => {
+    // Open shipment details modal
+    setShipmentDetailsModal({
+      open: true,
+      shipmentId
+    });
   };
 
   // Get status color for chip display
@@ -456,13 +563,35 @@ function Shipments() {
                       </TableCell>
                       <TableCell>
                         {shipment.vehicle ? (
-                          <Typography variant="body2">{shipment.vehicle}</Typography>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                            <Typography variant="body2" fontWeight="bold">
+                              {typeof shipment.vehicle === 'object' 
+                                ? `${shipment.vehicle.vehicleNumber} - ${shipment.vehicle.model}`
+                                : shipment.vehicle
+                              }
+                            </Typography>
+                            {typeof shipment.vehicle === 'object' && (
+                              <Typography variant="body2" color="text.secondary">
+                                {shipment.vehicle.type} • {shipment.vehicle.licensePlate}
+                              </Typography>
+                            )}
+                          </Box>
                         ) : (
                           <Chip label="Not Assigned" size="small" />
                         )}
                       </TableCell>
                       <TableCell>
                         <Box sx={{ display: 'flex', gap: 1 }}>
+                          <Tooltip title="Assign Shipment">
+                            <IconButton 
+                              size="small" 
+                              color="success"
+                              onClick={() => handleOpenAssignmentDialog(shipment)}
+                              disabled={shipment.status === 'delivered' || shipment.status === 'cancelled'}
+                            >
+                              <AssignmentIcon />
+                            </IconButton>
+                          </Tooltip>
                           <Tooltip title="View Details">
                             <IconButton 
                               size="small" 
@@ -545,6 +674,25 @@ function Shipments() {
         </DialogActions>
       </Dialog>
       
+      {/* Shipment Assignment Dialog */}
+      <ShipmentAssignmentDialog
+        open={assignmentDialog.open}
+        onClose={handleCloseAssignmentDialog}
+        shipment={assignmentDialog.shipment}
+        drivers={drivers}
+        vehicles={vehicles}
+        onAssign={handleAssignShipment}
+        loading={assignmentLoading}
+      />
+
+      {/* Assignment Success Modal */}
+      <ShipmentAssignmentSuccessModal
+        open={successModal.open}
+        onClose={handleCloseSuccessModal}
+        assignmentData={successModal.assignmentData}
+        onGoToShipment={handleGoToShipment}
+      />
+
       {/* Snackbar for notifications */}
       <Snackbar
         open={snackbar.open}
