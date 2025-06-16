@@ -45,7 +45,7 @@ const Shipment = sequelize.define('Shipment', {
   },
   scheduledPickupDate: {
     type: DataTypes.DATE,
-    allowNull: false
+    allowNull: true
   },
   estimatedDeliveryDate: {
     type: DataTypes.DATE,
@@ -73,11 +73,35 @@ const Shipment = sequelize.define('Shipment', {
   },
   userId: {
     type: DataTypes.UUID,
-    allowNull: false,
+    allowNull: true,
     references: {
       model: 'users',
       key: 'id'
     }
+  },
+  userType: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    defaultValue: 'authenticated',
+    validate: {
+      isIn: [['authenticated', 'guest']]
+    }
+  },
+  guestName: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  guestPhone: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  guestEmail: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  vehicleType: {
+    type: DataTypes.STRING,
+    allowNull: true
   },
   vehicleId: {
     type: DataTypes.UUID,
@@ -109,6 +133,20 @@ const Shipment = sequelize.define('Shipment', {
         const timestamp = new Date().getTime().toString().slice(-8);
         const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
         shipment.trackingNumber = `${prefix}-${timestamp}-${random}`;
+      }
+
+      // Set default pickup date for guest bookings (next business day)
+      if (shipment.userType === 'guest' && !shipment.scheduledPickupDate) {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        shipment.scheduledPickupDate = tomorrow;
+      }
+
+      // Set estimated delivery date (3 business days after pickup)
+      if (!shipment.estimatedDeliveryDate && shipment.scheduledPickupDate) {
+        const deliveryDate = new Date(shipment.scheduledPickupDate);
+        deliveryDate.setDate(deliveryDate.getDate() + 3);
+        shipment.estimatedDeliveryDate = deliveryDate;
       }
     }
   }

@@ -104,7 +104,7 @@ exports.getUserShipment = async (req, res, next) => {
   }
 };
 
-// Create a new shipment
+// Create a new shipment (handles both authenticated and guest users)
 exports.createShipment = async (req, res, next) => {
   try {
     // Check for validation errors
@@ -116,18 +116,72 @@ exports.createShipment = async (req, res, next) => {
       });
     }
 
-    // Add user ID to the shipment
-    req.body.userId = req.user.id;
+    const { userType } = req.body;
+
+    // Prepare shipment data based on user type
+    let shipmentData = { ...req.body };
+
+    // Ensure weight is set from estimatedWeight if needed (backup to middleware)
+    if (!shipmentData.weight && shipmentData.estimatedWeight) {
+      shipmentData.weight = shipmentData.estimatedWeight;
+    }
+
+    if (userType === 'authenticated') {
+      // For authenticated users, use the user ID from auth middleware
+      if (!req.user || !req.user.id) {
+        return res.status(401).json({
+          status: 'fail',
+          message: 'Authentication required for authenticated user bookings'
+        });
+      }
+      shipmentData.userId = req.user.id;
+      shipmentData.userType = 'authenticated';
+      
+      // Remove guest fields for authenticated users
+      delete shipmentData.guestName;
+      delete shipmentData.guestPhone;
+      delete shipmentData.guestEmail;
+      
+    } else if (userType === 'guest') {
+      // For guest users, set userId to null and userType to guest
+      shipmentData.userId = null;
+      shipmentData.userType = 'guest';
+    }
 
     // Create shipment
-    const shipment = await Shipment.create(req.body);
+    const shipment = await Shipment.create(shipmentData);
 
-    logger.info(`New shipment created: ${shipment.trackingNumber}`);
+    const logMessage = userType === 'guest' 
+      ? `New guest shipment created: ${shipment.trackingNumber} for ${shipment.guestName}`
+      : `New shipment created: ${shipment.trackingNumber} for user ${req.user.id}`;
+    
+    logger.info(logMessage);
+
+    // Prepare response data
+    const responseData = {
+      trackingNumber: shipment.trackingNumber,
+      bookingId: shipment.id,
+      status: shipment.status,
+      pickupAddress: shipment.pickupAddress,
+      deliveryAddress: shipment.deliveryAddress,
+      scheduledPickupDate: shipment.scheduledPickupDate,
+      estimatedDeliveryDate: shipment.estimatedDeliveryDate,
+      createdAt: shipment.createdAt
+    };
+
+    // Add user-specific fields to response
+    if (userType === 'guest') {
+      responseData.guestName = shipment.guestName;
+      responseData.guestPhone = shipment.guestPhone;
+      responseData.guestEmail = shipment.guestEmail;
+      responseData.weight = shipment.weight;
+      responseData.vehicleType = shipment.vehicleType;
+    }
 
     res.status(201).json({
       status: 'success',
       data: {
-        shipment
+        shipment: responseData
       }
     });
   } catch (error) {
@@ -534,6 +588,117 @@ exports.assignShipment = async (req, res, next) => {
       status: 'success',
       data: {
         shipment: updatedShipment
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Guest booking routes
+
+// Create a guest shipment booking
+exports.createGuestShipment = async (req, res, next) => {
+  try {
+    // Check for validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        status: 'fail',
+        errors: errors.array()
+      });
+    }
+
+    // Set shipment data for guest booking
+    const shipmentData = {
+      ...req.body,
+      userType: 'guest',
+      userId: null
+    };
+
+    // Ensure weight is set from estimatedWeight if needed (backup to middleware)
+    if (!shipmentData.weight && shipmentData.estimatedWeight) {
+      shipmentData.weight = shipmentData.estimatedWeight;
+    }
+
+    // Create shipment
+    const shipment = await Shipment.create(shipmentData);
+
+    logger.info(`New guest shipment created: ${shipment.trackingNumber} for ${shipment.guestName}`);
+
+    res.status(201).json({
+      status: 'success',
+      data: {
+        trackingNumber: shipment.trackingNumber,
+        estimatedDeliveryDate: shipment.estimatedDeliveryDate,
+        bookingId: shipment.id,
+        scheduledPickupDate: shipment.scheduledPickupDate,
+        shipment: {
+          id: shipment.id,
+          trackingNumber: shipment.trackingNumber,
+          status: shipment.status,
+          pickupAddress: shipment.pickupAddress,
+          deliveryAddress: shipment.deliveryAddress,
+          weight: shipment.weight,
+          vehicleType: shipment.vehicleType,
+          scheduledPickupDate: shipment.scheduledPickupDate,
+          estimatedDeliveryDate: shipment.estimatedDeliveryDate,
+          guestName: shipment.guestName,
+          guestPhone: shipment.guestPhone,
+          guestEmail: shipment.guestEmail
+        }
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Track a guest shipment by tracking number
+exports.trackGuestShipment = async (req, res, next) => {
+  try {
+    const { trackingNumber } = req.params;
+
+    const shipment = await Shipment.findOne({
+      where: { 
+        trackingNumber,
+        userType: 'guest'
+      },
+      attributes: [
+        'id', 
+        'trackingNumber',
+        'status',
+        'pickupAddress',
+        'deliveryAddress',
+        'weight',
+        'vehicleType',
+        'scheduledPickupDate',
+        'estimatedDeliveryDate',
+        'actualPickupDate',
+        'actualDeliveryDate',
+        'guestName',
+        'guestPhone',
+        'guestEmail',
+        'specialInstructions',
+        'createdAt'
+      ],
+      include: [
+        {
+          model: Vehicle,
+          as: 'vehicle',
+          attributes: ['vehicleNumber', 'type', 'model']
+        }
+      ]
+    });
+
+    if (!shipment) {
+      return next(new AppError('Guest shipment not found with that tracking number', 404));
+    }
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        shipment
       }
     });
   } catch (error) {
