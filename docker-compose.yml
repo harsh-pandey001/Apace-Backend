@@ -14,3 +14,58 @@ services:
       - "3307:3306"
     volumes:
       - ./mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: apace-backend
+    restart: always
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+      - DATABASE_HOST=mysql
+      - DATABASE_PORT=3306
+      - DATABASE_USER=apace_user
+      - DATABASE_PASSWORD=apace_password
+      - DATABASE_NAME=apace_db
+      - JWT_SECRET=your_jwt_secret_key_change_this
+      - JWT_REFRESH_SECRET=your_jwt_refresh_secret_key_change_this
+      - JWT_EXPIRES_IN=1h
+      - REFRESH_TOKEN_EXPIRES_IN=7d
+      - CORS_ORIGIN=http://localhost
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./uploads:/app/uploads
+    command: >
+      sh -c "
+        echo 'Waiting for database...' &&
+        sleep 10 &&
+        npm run db:migrate &&
+        npm run db:seed &&
+        node server.js
+      "
+
+  admin-panel:
+    build:
+      context: ./AdminPanel
+      dockerfile: Dockerfile
+    container_name: apace-admin
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    environment:
+      - REACT_APP_API_URL=http://localhost:5000
+
+volumes:
+  mysql-data:
