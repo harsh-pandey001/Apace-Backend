@@ -5,15 +5,29 @@ import api from './api';
  */
 export const vehicleService = {
   /**
-   * Get all vehicle types with pricing
+   * Get all vehicle types with pricing (Admin interface)
    * @returns {Promise} - Promise with vehicle types data
    */
   getAllVehicleTypes: async () => {
     try {
-      const response = await api.get('/vehicles');
+      const response = await api.get('/vehicles/admin/all');
       return response.data;
     } catch (error) {
       console.error('Error fetching vehicle types:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get public vehicle types (optimized for frontend)
+   * @returns {Promise} - Promise with vehicle types data
+   */
+  getPublicVehicleTypes: async () => {
+    try {
+      const response = await api.get('/vehicles');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching public vehicle types:', error);
       throw error;
     }
   },

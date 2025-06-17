@@ -10,11 +10,14 @@ const {
 const router = express.Router();
 
 // Public routes - anyone can view vehicle types and pricing
-router.get('/', vehicleTypeController.getAllVehicleTypes);
+router.get('/', vehicleTypeController.getPublicVehicleTypes); // Optimized for frontend consumption
 router.get('/:vehicleType/pricing', vehicleTypeController.getVehiclePricing);
 
 // Protected routes - require authentication
 router.use(protect);
+
+// Admin routes that require authentication
+router.get('/admin/all', vehicleTypeController.getAllVehicleTypes); // Full details for admin panel
 
 // Admin only routes - require admin role
 router.use(restrictTo('admin'));

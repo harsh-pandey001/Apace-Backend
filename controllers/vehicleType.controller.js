@@ -13,7 +13,7 @@ const getPagination = (req) => {
   return { page, limit, offset };
 };
 
-// Get all vehicle types
+// Get all vehicle types (Admin/Management interface with full details and pagination)
 exports.getAllVehicleTypes = async (req, res, next) => {
   try {
     const { page, limit, offset } = getPagination(req);
@@ -69,6 +69,64 @@ exports.getAllVehicleTypes = async (req, res, next) => {
     
   } catch (error) {
     logger.error('Error retrieving vehicle types:', error);
+    next(new AppError('Failed to retrieve vehicle types', 500));
+  }
+};
+
+// Get all active vehicle types for public/frontend consumption (User App)
+exports.getPublicVehicleTypes = async (req, res, next) => {
+  try {
+    // Get only active vehicle types for public consumption
+    const vehicleTypes = await VehicleType.findAll({
+      where: { isActive: true },
+      attributes: [
+        'id',
+        'vehicleType', 
+        'label', 
+        'capacity', 
+        'basePrice', 
+        'pricePerKm', 
+        'startingPrice'
+      ],
+      order: [
+        ['vehicleType', 'ASC'] // Alphabetical order for consistent UI
+      ]
+    });
+
+    // Transform data for frontend optimization
+    const optimizedData = vehicleTypes.map(vehicle => ({
+      id: vehicle.id,
+      type: vehicle.vehicleType,
+      name: vehicle.label,
+      capacity: vehicle.capacity,
+      pricing: {
+        base: parseFloat(vehicle.basePrice),
+        perKm: parseFloat(vehicle.pricePerKm),
+        starting: parseFloat(vehicle.startingPrice)
+      },
+      // Add calculated fields for frontend convenience
+      displayPrice: `Starting from $${vehicle.startingPrice}`,
+      priceRange: {
+        min: parseFloat(vehicle.startingPrice),
+        baseRate: parseFloat(vehicle.basePrice),
+        kmRate: parseFloat(vehicle.pricePerKm)
+      }
+    }));
+    
+    res.json({
+      success: true,
+      data: optimizedData,
+      meta: {
+        total: vehicleTypes.length,
+        timestamp: new Date().toISOString(),
+        version: '1.0'
+      }
+    });
+    
+    logger.info(`Public vehicle types retrieved: ${vehicleTypes.length} active types`);
+    
+  } catch (error) {
+    logger.error('Error retrieving public vehicle types:', error);
     next(new AppError('Failed to retrieve vehicle types', 500));
   }
 };
