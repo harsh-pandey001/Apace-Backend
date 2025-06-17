@@ -1,100 +1,95 @@
 import api from './api';
 
 /**
- * Service for vehicle-related API calls
+ * Service for vehicle type pricing management API calls
  */
 export const vehicleService = {
   /**
-   * Get all vehicles
-   * @returns {Promise} - Promise with vehicle data
+   * Get all vehicle types with pricing
+   * @returns {Promise} - Promise with vehicle types data
    */
-  getAllVehicles: async () => {
+  getAllVehicleTypes: async () => {
     try {
-      // Since there's no specific vehicles API endpoint, we'll need to create a mock
-      // or update the backend to provide this endpoint. For now, we'll return mock data
-      // that matches the vehicle structure we saw in the database
-      
-      // This should be replaced with actual API call when backend is updated
-      const mockVehicles = [
-        {
-          id: '63ed86d2-ea58-40e6-ba73-af9be952595e',
-          vehicleNumber: 'VEH-004',
-          type: 'van',
-          model: 'Mercedes Sprinter',
-          licensePlate: 'ABC-1234',
-          capacity: 15,
-          maxWeight: 3500,
-          status: 'available'
-        },
-        {
-          id: '141a7eb4-a486-49fb-b37e-37421b87c238',
-          vehicleNumber: 'VEH-001',
-          type: 'van',
-          model: 'Ford Transit',
-          licensePlate: 'XYZ-5678',
-          capacity: 12,
-          maxWeight: 3000,
-          status: 'available'
-        },
-        {
-          id: 'db05559d-5fa6-4cca-b9b7-b94a658f5bbb',
-          vehicleNumber: 'VEH-002',
-          type: 'truck',
-          model: 'Volvo FH',
-          licensePlate: 'DEF-9012',
-          capacity: 40,
-          maxWeight: 15000,
-          status: 'available'
-        },
-        {
-          id: 'b0eb4309-7230-461c-b6a9-f5f435886e92',
-          vehicleNumber: 'VEH-003',
-          type: 'car',
-          model: 'Toyota Corolla',
-          licensePlate: 'GHI-3456',
-          capacity: 0.5,
-          maxWeight: 500,
-          status: 'available'
-        }
-      ];
-
-      return { data: { vehicles: mockVehicles } };
+      const response = await api.get('/vehicles');
+      return response.data;
     } catch (error) {
-      console.error('Error fetching vehicles:', error);
+      console.error('Error fetching vehicle types:', error);
       throw error;
     }
   },
 
   /**
-   * Get a single vehicle by ID
-   * @param {string} id - Vehicle ID
-   * @returns {Promise} - Promise with vehicle data
+   * Get a single vehicle type by ID
+   * @param {string} id - Vehicle type ID
+   * @returns {Promise} - Promise with vehicle type data
    */
-  getVehicleById: async (id) => {
+  getVehicleTypeById: async (id) => {
     try {
-      // This would be an actual API call when backend supports it
       const response = await api.get(`/vehicles/${id}`);
       return response.data;
     } catch (error) {
-      console.error(`Error fetching vehicle ${id}:`, error);
+      console.error(`Error fetching vehicle type ${id}:`, error);
       throw error;
     }
   },
 
   /**
-   * Get available vehicles only
-   * @returns {Promise} - Promise with available vehicle data
+   * Create a new vehicle type
+   * @param {Object} vehicleData - Vehicle type data
+   * @returns {Promise} - Promise with created vehicle type data
    */
-  getAvailableVehicles: async () => {
+  createVehicleType: async (vehicleData) => {
     try {
-      const response = await vehicleService.getAllVehicles();
-      const vehicles = response.data.vehicles.filter(vehicle => 
-        vehicle.status === 'available'
-      );
-      
-      return { data: { vehicles } };
+      const response = await api.post('/vehicles', vehicleData);
+      return response.data;
     } catch (error) {
-      console.error('Error fetching available vehicles:', error);
+      console.error('Error creating vehicle type:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Update vehicle type pricing
+   * @param {string} id - Vehicle type ID
+   * @param {Object} updateData - Data to update
+   * @returns {Promise} - Promise with updated vehicle type data
+   */
+  updateVehicleType: async (id, updateData) => {
+    try {
+      const response = await api.put(`/vehicles/${id}`, updateData);
+      return response.data;
+    } catch (error) {
+      console.error(`Error updating vehicle type ${id}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Delete (deactivate) vehicle type
+   * @param {string} id - Vehicle type ID
+   * @returns {Promise} - Promise with success message
+   */
+  deleteVehicleType: async (id) => {
+    try {
+      const response = await api.delete(`/vehicles/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error deleting vehicle type ${id}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get pricing for a specific vehicle type
+   * @param {string} vehicleType - Vehicle type name
+   * @returns {Promise} - Promise with pricing data
+   */
+  getVehiclePricing: async (vehicleType) => {
+    try {
+      const response = await api.get(`/vehicles/${vehicleType}/pricing`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching pricing for ${vehicleType}:`, error);
       throw error;
     }
   }

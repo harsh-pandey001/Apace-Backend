@@ -6,6 +6,7 @@ const Address = require('./address.model');
 const UserPreferences = require('./userPreferences.model');
 const OtpVerification = require('./otpVerification.model');
 const DriverDocument = require('./driverDocument.model')(sequelize);
+const VehicleType = require('./vehicleType.model');
 
 // Define model associations here
 User.hasMany(Shipment, { foreignKey: 'userId', as: 'shipments' });
@@ -38,5 +39,6 @@ module.exports = {
   Address,
   UserPreferences,
   OtpVerification,
-  DriverDocument
+  DriverDocument,
+  VehicleType
 };

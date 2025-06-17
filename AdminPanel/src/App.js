@@ -14,6 +14,7 @@ const Users = lazy(() => import('./pages/Users'));
 const Shipments = lazy(() => import('./pages/Shipments'));
 const DriverDocuments = lazy(() => import('./pages/DriverDocuments'));
 const Preferences = lazy(() => import('./pages/Preferences'));
+const VehiclePricing = lazy(() => import('./pages/VehiclePricing'));
 const Login = lazy(() => import('./pages/auth/Login'));
 
 const drawerWidth = 240;
@@ -273,6 +274,16 @@ function App() {
                 <ProtectedRoute>
                   <AuthenticatedLayout>
                     <Preferences />
+                  </AuthenticatedLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/vehicle-pricing"
+              element={
+                <ProtectedRoute adminOnly>
+                  <AuthenticatedLayout>
+                    <VehiclePricing />
                   </AuthenticatedLayout>
                 </ProtectedRoute>
               }
