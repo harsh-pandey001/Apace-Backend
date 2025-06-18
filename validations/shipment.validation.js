@@ -13,11 +13,6 @@ exports.createShipmentValidation = [
     .isISO8601()
     .withMessage('Valid pickup date is required'),
   
-  body('estimatedDeliveryDate')
-    .optional()
-    .isISO8601()
-    .withMessage('Valid delivery date is required'),
-  
   body('pickupLat')
     .optional()
     .isFloat()
@@ -50,7 +45,17 @@ exports.createShipmentValidation = [
   
   body('specialInstructions')
     .optional()
-    .isString()
+    .isString(),
+
+  body('price')
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage('Price must be a positive number'),
+
+  body('distance')
+    .optional()
+    .isFloat({ min: 1.0 })
+    .withMessage('Distance must be at least 1 kilometer')
 ];
 
 exports.updateShipmentStatusValidation = [
@@ -148,7 +153,23 @@ exports.createGuestShipmentValidation = [
     .optional()
     .isString()
     .isLength({ max: 500 })
-    .withMessage('Special instructions must be a string with maximum 500 characters')
+    .withMessage('Special instructions must be a string with maximum 500 characters'),
+
+  body('price')
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage('Price must be a positive number'),
+
+  body('distance')
+    .optional()
+    .isFloat({ min: 1.0 })
+    .withMessage('Distance must be at least 1 kilometer')
+    .custom((value) => {
+      if (value !== undefined && value < 1.0) {
+        throw new Error('Distance too short. Minimum distance is 1 kilometer for delivery.');
+      }
+      return true;
+    })
 ];
 
 // Unified validation for shipment creation that handles both authenticated and guest users
@@ -171,11 +192,6 @@ exports.createUnifiedShipmentValidation = [
     .if(body('userType').equals('authenticated'))
     .isISO8601()
     .withMessage('Valid pickup date is required for authenticated users'),
-  
-  body('estimatedDeliveryDate')
-    .optional()
-    .isISO8601()
-    .withMessage('Valid delivery date is required'),
   
   // Weight and vehicleType are required for guest users - accept both weight and estimatedWeight
   body('weight')
@@ -291,5 +307,21 @@ exports.createUnifiedShipmentValidation = [
     .optional()
     .isString()
     .isLength({ max: 500 })
-    .withMessage('Special instructions must be a string with maximum 500 characters')
+    .withMessage('Special instructions must be a string with maximum 500 characters'),
+
+  body('price')
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage('Price must be a positive number'),
+
+  body('distance')
+    .optional()
+    .isFloat({ min: 1.0 })
+    .withMessage('Distance must be at least 1 kilometer')
+    .custom((value) => {
+      if (value !== undefined && value < 1.0) {
+        throw new Error('Distance too short. Minimum distance is 1 kilometer for delivery.');
+      }
+      return true;
+    })
 ];

@@ -165,7 +165,9 @@ exports.createShipment = async (req, res, next) => {
       pickupAddress: shipment.pickupAddress,
       deliveryAddress: shipment.deliveryAddress,
       scheduledPickupDate: shipment.scheduledPickupDate,
-      estimatedDeliveryDate: shipment.estimatedDeliveryDate,
+      price: shipment.price,
+      distance: shipment.distance,
+      paymentStatus: shipment.paymentStatus,
       createdAt: shipment.createdAt
     };
 
@@ -174,6 +176,10 @@ exports.createShipment = async (req, res, next) => {
       responseData.guestName = shipment.guestName;
       responseData.guestPhone = shipment.guestPhone;
       responseData.guestEmail = shipment.guestEmail;
+      responseData.weight = shipment.weight;
+      responseData.vehicleType = shipment.vehicleType;
+    } else {
+      // For authenticated users, also include these fields
       responseData.weight = shipment.weight;
       responseData.vehicleType = shipment.vehicleType;
     }
@@ -203,9 +209,11 @@ exports.trackShipment = async (req, res, next) => {
         'pickupAddress',
         'deliveryAddress',
         'scheduledPickupDate',
-        'estimatedDeliveryDate',
         'actualPickupDate',
-        'actualDeliveryDate'
+        'actualDeliveryDate',
+        'price',
+        'distance',
+        'paymentStatus'
       ],
       include: [
         {
@@ -630,9 +638,11 @@ exports.createGuestShipment = async (req, res, next) => {
       status: 'success',
       data: {
         trackingNumber: shipment.trackingNumber,
-        estimatedDeliveryDate: shipment.estimatedDeliveryDate,
         bookingId: shipment.id,
         scheduledPickupDate: shipment.scheduledPickupDate,
+        price: shipment.price,
+        distance: shipment.distance,
+        paymentStatus: shipment.paymentStatus,
         shipment: {
           id: shipment.id,
           trackingNumber: shipment.trackingNumber,
@@ -642,7 +652,9 @@ exports.createGuestShipment = async (req, res, next) => {
           weight: shipment.weight,
           vehicleType: shipment.vehicleType,
           scheduledPickupDate: shipment.scheduledPickupDate,
-          estimatedDeliveryDate: shipment.estimatedDeliveryDate,
+          price: shipment.price,
+          distance: shipment.distance,
+          paymentStatus: shipment.paymentStatus,
           guestName: shipment.guestName,
           guestPhone: shipment.guestPhone,
           guestEmail: shipment.guestEmail
@@ -673,13 +685,15 @@ exports.trackGuestShipment = async (req, res, next) => {
         'weight',
         'vehicleType',
         'scheduledPickupDate',
-        'estimatedDeliveryDate',
         'actualPickupDate',
         'actualDeliveryDate',
         'guestName',
         'guestPhone',
         'guestEmail',
         'specialInstructions',
+        'price',
+        'distance',
+        'paymentStatus',
         'createdAt'
       ],
       include: [

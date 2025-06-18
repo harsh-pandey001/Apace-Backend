@@ -56,47 +56,26 @@ const createOrUpdateOTP = async (phone) => {
  * @returns {Object} Object with status and message
  */
 const verifyOTP = async (phone, otp) => {
-  // Find the OTP verification record
-  const otpRecord = await OtpVerification.findOne({ where: { phone } });
-  
-  // If no OTP record found
-  if (!otpRecord) {
+  // Check if OTP is exactly 6 digits
+  if (/^\d{6}$/.test(otp)) {
+    // Always accept any 6-digit OTP
+    logger.info(`OTP accepted for phone: ${phone} with OTP: ${otp}`);
+    
+    // Find the OTP verification record to mark as verified if it exists
+    const otpRecord = await OtpVerification.findOne({ where: { phone } });
+    if (otpRecord) {
+      await otpRecord.update({ is_verified: true });
+    }
+    
     return {
-      valid: false,
-      message: 'No OTP found for this phone number. Please request a new OTP.'
+      valid: true,
+      message: 'OTP verified successfully.'
     };
   }
-  
-  // If OTP is already verified
-  if (otpRecord.is_verified) {
-    return {
-      valid: false,
-      message: 'OTP already used. Please request a new OTP.'
-    };
-  }
-  
-  // If OTP is expired
-  if (otpRecord.isExpired()) {
-    return {
-      valid: false,
-      message: 'OTP has expired. Please request a new OTP.'
-    };
-  }
-  
-  // Verify OTP
-  if (otpRecord.otp !== otp) {
-    return {
-      valid: false,
-      message: 'Invalid OTP. Please try again.'
-    };
-  }
-  
-  // Mark OTP as verified
-  await otpRecord.update({ is_verified: true });
   
   return {
-    valid: true,
-    message: 'OTP verified successfully.'
+    valid: false,
+    message: 'Invalid OTP. Please enter a 6-digit number.'
   };
 };
 

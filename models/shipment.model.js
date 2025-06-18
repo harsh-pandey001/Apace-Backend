@@ -63,6 +63,16 @@ const Shipment = sequelize.define('Shipment', {
     type: DataTypes.FLOAT,
     allowNull: true
   },
+  distance: {
+    type: DataTypes.FLOAT,
+    allowNull: true,
+    validate: {
+      min: {
+        args: 1.0,
+        msg: 'Distance must be at least 1 kilometer'
+      }
+    }
+  },
   dimensions: {
     type: DataTypes.STRING,
     allowNull: true
