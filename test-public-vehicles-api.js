@@ -135,7 +135,7 @@ const testCacheAndPerformance = async () => {
     
     console.log(`✅ 5 concurrent requests completed in ${totalTime}ms`);
     console.log(`✅ Average response time: ${totalTime / 5}ms`);
-    console.log(`✅ API handles concurrent load`);
+    console.log('✅ API handles concurrent load');
     
     return true;
   } catch (error) {
@@ -183,8 +183,8 @@ const runAllTests = async () => {
   console.log(`🎯 FINAL TEST SUMMARY: ${passed}/${total} tests passed`);
   console.log(`${passed === total ? '✅ ALL TESTS PASSED!' : '❌ Some tests failed'}`);
   console.log(`\n🔗 PUBLIC API ENDPOINT: GET ${BASE_URL}/api/vehicles`);
-  console.log(`📱 Ready for User App integration!`);
-  console.log(`💡 Single source of truth for all vehicle pricing`);
+  console.log('📱 Ready for User App integration!');
+  console.log('💡 Single source of truth for all vehicle pricing');
   console.log(`${'='.repeat(70)}`);
 };
 

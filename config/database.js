@@ -28,15 +28,15 @@ if (process.env.NODE_ENV === 'production') {
 const sequelize = process.env.DATABASE_URL
   ? new Sequelize(process.env.DATABASE_URL, config)
   : new Sequelize(
-      process.env.DATABASE_NAME,
-      process.env.DATABASE_USER,
-      process.env.DATABASE_PASSWORD,
-      {
-        ...config,
-        host: process.env.DATABASE_HOST,
-        port: process.env.DATABASE_PORT
-      }
-    );
+    process.env.DATABASE_NAME,
+    process.env.DATABASE_USER,
+    process.env.DATABASE_PASSWORD,
+    {
+      ...config,
+      host: process.env.DATABASE_HOST,
+      port: process.env.DATABASE_PORT
+    }
+  );
 
 // Test database connection
 const connectDB = async () => {

@@ -33,7 +33,8 @@
       "Bash(npx eslint:*)",
       "Bash(timeout 10s npm start)",
       "Bash(timeout 15s npm start)",
-      "Bash(PORT=3001 timeout 15s npm start:*)"
+      "Bash(PORT=3001 timeout 15s npm start:*)",
+      "Bash(npm test)"
     ],
     "deny": []
   },

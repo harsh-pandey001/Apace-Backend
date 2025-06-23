@@ -52,6 +52,18 @@ const User = sequelize.define('User', {
     type: DataTypes.ENUM('online', 'offline'),
     allowNull: false,
     defaultValue: 'offline'
+  },
+  profilePicture: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    defaultValue: null,
+    validate: {
+      isUrlOrNull(value) {
+        if (value !== null && value !== '' && !/^https?:\/\/.+\..+/.test(value)) {
+          throw new Error('Profile picture must be a valid URL or null');
+        }
+      }
+    }
   }
 }, {
   timestamps: true,

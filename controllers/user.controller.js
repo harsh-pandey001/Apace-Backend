@@ -10,6 +10,10 @@ exports.getProfile = async (req, res, next) => {
       attributes: { exclude: ['password'] }
     });
 
+    if (!user.profilePicture) {
+      user.profilePicture = 'https://example.com/default-avatar.png';
+    }
+
     res.status(200).json({
       status: 'success',
       data: {
@@ -43,27 +47,47 @@ exports.updateProfile = async (req, res, next) => {
       );
     }
 
-    // Restrict fields that can be updated
-    const filteredBody = {};
-    const allowedFields = ['firstName', 'lastName', 'email', 'phone'];
-    Object.keys(req.body).forEach(field => {
-      if (allowedFields.includes(field)) {
-        filteredBody[field] = req.body[field];
-      }
-    });
+    // Build dynamic update object with only provided fields
+    const updatedFields = {};
+    
+    // Handle profilePicture separately to allow null values
+    if (req.body.profilePicture !== undefined) {
+      updatedFields.profilePicture = req.body.profilePicture;
+    }
+    
+    // Handle other fields only if they have truthy values
+    if (req.body.firstName) {
+      updatedFields.firstName = req.body.firstName;
+    }
+    if (req.body.lastName) {
+      updatedFields.lastName = req.body.lastName;
+    }
+    if (req.body.email) {
+      updatedFields.email = req.body.email;
+    }
+    if (req.body.phone) {
+      updatedFields.phone = req.body.phone;
+    }
+
+    // Check if any fields were provided for update
+    if (Object.keys(updatedFields).length === 0) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'No fields provided to update'
+      });
+    }
 
     // Check if email already exists if trying to change it
-    if (filteredBody.email && filteredBody.email !== req.user.email) {
-      const existingUser = await User.findOne({ where: { email: filteredBody.email } });
+    if (updatedFields.email && updatedFields.email !== req.user.email) {
+      const existingUser = await User.findOne({ where: { email: updatedFields.email } });
       if (existingUser) {
         return next(new AppError('Email already in use', 400));
       }
     }
 
-    // Update user document
-    const updatedUser = await User.update(filteredBody, {
-      where: { id: req.user.id },
-      returning: true
+    // Perform dynamic update - only update provided fields
+    await User.update(updatedFields, {
+      where: { id: req.user.id }
     });
 
     // Fetch updated user
@@ -71,12 +95,19 @@ exports.updateProfile = async (req, res, next) => {
       attributes: { exclude: ['password'] }
     });
 
-    logger.info(`User updated profile: ${user.email}`);
+    // Handle default avatar for response
+    const userResponse = user.toJSON();
+    if (!userResponse.profilePicture) {
+      userResponse.profilePicture = 'https://example.com/default-avatar.png';
+    }
+
+    logger.info(`User updated profile: ${user.email} - Fields: ${Object.keys(updatedFields).join(', ')}`);
 
     res.status(200).json({
       status: 'success',
+      message: 'Profile updated successfully',
       data: {
-        user
+        user: userResponse
       }
     });
   } catch (error) {

@@ -19,7 +19,30 @@ exports.updateProfileValidation = [
   body('phone')
     .optional()
     .isMobilePhone()
-    .withMessage('Please provide a valid phone number')
+    .withMessage('Please provide a valid phone number'),
+  
+  body('profilePicture')
+    .optional({ checkFalsy: false })
+    .custom((value) => {
+      if (value === null || value === undefined || value === '') {
+        return true;
+      }
+      if (typeof value === 'string' && /^https?:\/\/.+\..+/.test(value)) {
+        return true;
+      }
+      throw new Error('Profile picture must be a valid URL or null');
+    }),
+  
+  // Custom validation to ensure at least one field is provided
+  body().custom((value, { req }) => {
+    const allowedFields = ['firstName', 'lastName', 'email', 'phone', 'profilePicture'];
+    const providedFields = Object.keys(req.body).filter(field => allowedFields.includes(field));
+    
+    if (providedFields.length === 0) {
+      throw new Error('At least one field must be provided for update');
+    }
+    return true;
+  })
 ];
 
 exports.createUserValidation = [
