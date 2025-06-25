@@ -43,7 +43,7 @@ function Dashboard() {
     { id: 1, action: 'New user registered', user: 'John Doe', time: '2 minutes ago', status: 'success' },
     { id: 2, action: 'Shipment delivered', shipmentId: '#1234', time: '15 minutes ago', status: 'success' },
     { id: 3, action: 'Shipment cancelled', shipmentId: '#5678', time: '1 hour ago', status: 'error' },
-    { id: 4, action: 'Payment received', amount: '$234.50', time: '2 hours ago', status: 'success' },
+    { id: 4, action: 'Payment received', amount: '₹234.50', time: '2 hours ago', status: 'success' },
     { id: 5, action: 'Driver assigned', driverId: 'D123', time: '3 hours ago', status: 'info' },
   ];
 

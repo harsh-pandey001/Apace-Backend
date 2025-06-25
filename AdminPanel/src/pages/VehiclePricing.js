@@ -183,9 +183,9 @@ const VehiclePricing = () => {
 
   // Format currency
   const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-IN', {
       style: 'currency',
-      currency: 'USD'
+      currency: 'INR'
     }).format(amount);
   };
 
@@ -227,7 +227,7 @@ const VehiclePricing = () => {
             <Typography variant="h6">
               {vehicleTypes.length > 0 
                 ? formatCurrency(Math.min(...vehicleTypes.map(v => parseFloat(v.basePrice))))
-                : '$0'
+                : '₹0'
               }
             </Typography>
             <Typography variant="body2" color="textSecondary">Lowest Base Price</Typography>
@@ -239,7 +239,7 @@ const VehiclePricing = () => {
             <Typography variant="h6">
               {vehicleTypes.length > 0 
                 ? formatCurrency(Math.max(...vehicleTypes.map(v => parseFloat(v.pricePerKm))))
-                : '$0'
+                : '₹0'
               }
             </Typography>
             <Typography variant="body2" color="textSecondary">Highest Price/Km</Typography>
@@ -324,7 +324,7 @@ const VehiclePricing = () => {
                             type="number"
                             inputProps={{ min: 0, step: 0.01 }}
                             InputProps={{
-                              startAdornment: <InputAdornment position="start">$</InputAdornment>
+                              startAdornment: <InputAdornment position="start">₹</InputAdornment>
                             }}
                             size="small"
                             fullWidth
@@ -341,7 +341,7 @@ const VehiclePricing = () => {
                             type="number"
                             inputProps={{ min: 0, step: 0.01 }}
                             InputProps={{
-                              startAdornment: <InputAdornment position="start">$</InputAdornment>
+                              startAdornment: <InputAdornment position="start">₹</InputAdornment>
                             }}
                             size="small"
                             fullWidth
@@ -358,7 +358,7 @@ const VehiclePricing = () => {
                             type="number"
                             inputProps={{ min: 0, step: 0.01 }}
                             InputProps={{
-                              startAdornment: <InputAdornment position="start">$</InputAdornment>
+                              startAdornment: <InputAdornment position="start">₹</InputAdornment>
                             }}
                             size="small"
                             fullWidth
@@ -462,7 +462,7 @@ const VehiclePricing = () => {
               type="number"
               inputProps={{ min: 0, step: 0.01 }}
               InputProps={{
-                startAdornment: <InputAdornment position="start">$</InputAdornment>
+                startAdornment: <InputAdornment position="start">₹</InputAdornment>
               }}
               value={newVehicle.basePrice}
               onChange={(e) => setNewVehicle(prev => ({ ...prev, basePrice: e.target.value }))}
@@ -474,7 +474,7 @@ const VehiclePricing = () => {
               type="number"
               inputProps={{ min: 0, step: 0.01 }}
               InputProps={{
-                startAdornment: <InputAdornment position="start">$</InputAdornment>
+                startAdornment: <InputAdornment position="start">₹</InputAdornment>
               }}
               value={newVehicle.pricePerKm}
               onChange={(e) => setNewVehicle(prev => ({ ...prev, pricePerKm: e.target.value }))}
@@ -486,7 +486,7 @@ const VehiclePricing = () => {
               type="number"
               inputProps={{ min: 0, step: 0.01 }}
               InputProps={{
-                startAdornment: <InputAdornment position="start">$</InputAdornment>
+                startAdornment: <InputAdornment position="start">₹</InputAdornment>
               }}
               value={newVehicle.startingPrice}
               onChange={(e) => setNewVehicle(prev => ({ ...prev, startingPrice: e.target.value }))}

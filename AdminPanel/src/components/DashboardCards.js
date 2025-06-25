@@ -87,7 +87,7 @@ function DashboardCards() {
     },
     {
       title: 'Total Revenue',
-      value: loading ? '-' : `$${metrics.totalRevenue}`,
+      value: loading ? '-' : `₹${metrics.totalRevenue}`,
       icon: <MoneyIcon />,
       color: '#e74c3c',
       trend: 'up',
