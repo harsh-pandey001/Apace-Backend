@@ -46,7 +46,12 @@ exports.createVehicleTypeValidation = [
     .optional()
     .isBoolean()
     .withMessage('isActive must be a boolean value')
-    .toBoolean()
+    .toBoolean(),
+
+  body('iconKey')
+    .optional()
+    .isIn(['truck', 'bike', 'car', 'van', 'bus', 'tractor', 'container', 'default'])
+    .withMessage('Icon key must be one of: truck, bike, car, van, bus, tractor, container, default')
 ];
 
 exports.updateVehicleTypeValidation = [
@@ -93,7 +98,12 @@ exports.updateVehicleTypeValidation = [
     .optional()
     .isBoolean()
     .withMessage('isActive must be a boolean value')
-    .toBoolean()
+    .toBoolean(),
+
+  body('iconKey')
+    .optional()
+    .isIn(['truck', 'bike', 'car', 'van', 'bus', 'tractor', 'container', 'default'])
+    .withMessage('Icon key must be one of: truck, bike, car, van, bus, tractor, container, default')
 ];
 
 exports.getVehicleTypeValidation = [

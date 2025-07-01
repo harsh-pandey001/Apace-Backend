@@ -1,6 +1,6 @@
 const { validationResult } = require('express-validator');
 const { Op } = require('sequelize');
-const { VehicleType } = require('../models');
+const { VehicleType, Shipment } = require('../models');
 const { AppError } = require('../middleware/errorHandler');
 const { logger } = require('../utils/logger');
 
@@ -86,7 +86,8 @@ exports.getPublicVehicleTypes = async (req, res, next) => {
         'capacity', 
         'basePrice', 
         'pricePerKm', 
-        'startingPrice'
+        'startingPrice',
+        'iconKey'
       ],
       order: [
         ['vehicleType', 'ASC'] // Alphabetical order for consistent UI
@@ -99,6 +100,7 @@ exports.getPublicVehicleTypes = async (req, res, next) => {
       type: vehicle.vehicleType,
       name: vehicle.label,
       capacity: vehicle.capacity,
+      iconKey: vehicle.iconKey,
       pricing: {
         base: parseFloat(vehicle.basePrice),
         perKm: parseFloat(vehicle.pricePerKm),
@@ -179,7 +181,7 @@ exports.createVehicleType = async (req, res, next) => {
       });
     }
     
-    const { vehicleType, label, capacity, basePrice, pricePerKm, startingPrice, isActive } = req.body;
+    const { vehicleType, label, capacity, basePrice, pricePerKm, startingPrice, isActive, iconKey } = req.body;
     
     // Check if vehicle type already exists
     const existingVehicleType = await VehicleType.findOne({
@@ -198,7 +200,8 @@ exports.createVehicleType = async (req, res, next) => {
       basePrice,
       pricePerKm,
       startingPrice,
-      isActive: isActive !== undefined ? isActive : true
+      isActive: isActive !== undefined ? isActive : true,
+      iconKey: iconKey || 'default'
     });
     
     res.status(201).json({
@@ -290,7 +293,7 @@ exports.updateVehicleType = async (req, res, next) => {
   }
 };
 
-// Delete vehicle type (soft delete by setting isActive to false)
+// Delete vehicle type (permanently remove from database)
 exports.deleteVehicleType = async (req, res, next) => {
   try {
     const errors = validationResult(req);
@@ -311,23 +314,43 @@ exports.deleteVehicleType = async (req, res, next) => {
       return next(new AppError('Vehicle type not found', 404));
     }
     
-    // Soft delete by setting isActive to false
-    await vehicleType.update({ isActive: false });
+    // Store vehicle type info for logging before deletion
+    const vehicleTypeInfo = {
+      id: vehicleType.id,
+      vehicleType: vehicleType.vehicleType,
+      label: vehicleType.label
+    };
+    
+    // Check if this vehicle type is being used in any shipments
+    const shipmentsUsingVehicleType = await Shipment.count({
+      where: { vehicleType: vehicleType.vehicleType }
+    });
+    
+    if (shipmentsUsingVehicleType > 0) {
+      return next(new AppError(
+        `Cannot delete vehicle type "${vehicleType.label}". It is currently being used by ${shipmentsUsingVehicleType} shipment(s). Please contact system administrator.`, 
+        409
+      ));
+    }
+    
+    // Permanently delete from database
+    await vehicleType.destroy();
     
     res.json({
       success: true,
-      message: 'Vehicle type deactivated successfully'
+      message: 'Vehicle type deleted successfully'
     });
     
-    logger.info('Vehicle type deactivated successfully', {
+    logger.info('Vehicle type deleted permanently', {
       userId: req.user?.id,
-      vehicleTypeId: vehicleType.id,
-      vehicleType: vehicleType.vehicleType
+      vehicleTypeId: vehicleTypeInfo.id,
+      vehicleType: vehicleTypeInfo.vehicleType,
+      label: vehicleTypeInfo.label
     });
     
   } catch (error) {
-    logger.error('Error deactivating vehicle type:', error);
-    next(new AppError('Failed to deactivate vehicle type', 500));
+    logger.error('Error deleting vehicle type:', error);
+    next(new AppError('Failed to delete vehicle type', 500));
   }
 };
 
@@ -341,7 +364,7 @@ exports.getVehiclePricing = async (req, res, next) => {
         vehicleType: vehicleType.toLowerCase(),
         isActive: true
       },
-      attributes: ['vehicleType', 'label', 'capacity', 'basePrice', 'pricePerKm', 'startingPrice']
+      attributes: ['vehicleType', 'label', 'capacity', 'basePrice', 'pricePerKm', 'startingPrice', 'iconKey']
     });
     
     if (!pricing) {

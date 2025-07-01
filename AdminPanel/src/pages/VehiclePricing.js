@@ -25,12 +25,17 @@ import {
   DialogActions,
   Fab,
   Grid,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
 } from '@mui/material';
 import {
   Edit as EditIcon,
   Save as SaveIcon,
   Cancel as CancelIcon,
   Add as AddIcon,
+  Delete as DeleteIcon,
   LocalShipping as VehicleIcon,
   AttachMoney as MoneyIcon,
   Speed as SpeedIcon,
@@ -50,6 +55,8 @@ const VehiclePricing = () => {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [syncDialogOpen, setSyncDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [vehicleToDelete, setVehicleToDelete] = useState(null);
   const [newVehicle, setNewVehicle] = useState({
     vehicleType: '',
     label: '',
@@ -57,8 +64,21 @@ const VehiclePricing = () => {
     basePrice: '',
     pricePerKm: '',
     startingPrice: '',
-    isActive: true
+    isActive: true,
+    iconKey: 'default'
   });
+
+  // Icon options for dropdown
+  const iconOptions = [
+    { label: 'Truck', value: 'truck' },
+    { label: 'Bike', value: 'bike' },
+    { label: 'Car', value: 'car' },
+    { label: 'Van', value: 'van' },
+    { label: 'Bus', value: 'bus' },
+    { label: 'Tractor', value: 'tractor' },
+    { label: 'Container', value: 'container' },
+    { label: 'Default', value: 'default' }
+  ];
 
   // Fetch vehicle types
   const fetchVehicleTypes = useCallback(async () => {
@@ -81,14 +101,21 @@ const VehiclePricing = () => {
 
   // Handle edit mode
   const handleEdit = (vehicle) => {
+    console.log('🔧 DEBUG: handleEdit called with vehicle:', vehicle);
+    console.log('🔧 DEBUG: vehicle.iconKey:', vehicle.iconKey);
+    
     setEditingId(vehicle.id);
-    setEditData({
+    const editDataToSet = {
       basePrice: vehicle.basePrice,
       pricePerKm: vehicle.pricePerKm,
       startingPrice: vehicle.startingPrice,
       capacity: vehicle.capacity,
-      label: vehicle.label
-    });
+      label: vehicle.label,
+      iconKey: vehicle.iconKey || 'default'
+    };
+    
+    console.log('🔧 DEBUG: editData to set:', editDataToSet);
+    setEditData(editDataToSet);
   };
 
   // Handle cancel edit
@@ -126,10 +153,34 @@ const VehiclePricing = () => {
 
   // Handle input change during edit
   const handleEditInputChange = (field, value) => {
-    setEditData(prev => ({
-      ...prev,
+    console.log(`🔧 DEBUG: handleEditInputChange called - field: ${field}, value: ${value}`);
+    const newEditData = {
+      ...editData,
       [field]: value
-    }));
+    };
+    console.log('🔧 DEBUG: new editData:', newEditData);
+    setEditData(newEditData);
+  };
+
+  // Handle delete vehicle
+  const handleDeleteVehicle = (vehicle) => {
+    setVehicleToDelete(vehicle);
+    setDeleteDialogOpen(true);
+  };
+
+  // Confirm delete vehicle
+  const confirmDeleteVehicle = async () => {
+    try {
+      await vehicleService.deleteVehicleType(vehicleToDelete.id);
+      setSuccess(`Vehicle type "${vehicleToDelete.label}" has been permanently deleted!`);
+      setDeleteDialogOpen(false);
+      setVehicleToDelete(null);
+      await fetchVehicleTypes();
+      setSyncDialogOpen(true); // Show sync confirmation
+    } catch (err) {
+      setError('Failed to delete vehicle type. Please try again.');
+      console.error('Error deleting vehicle:', err);
+    }
   };
 
   // Handle add new vehicle
@@ -157,7 +208,8 @@ const VehiclePricing = () => {
         basePrice: '',
         pricePerKm: '',
         startingPrice: '',
-        isActive: true
+        isActive: true,
+        iconKey: 'default'
       });
       await fetchVehicleTypes();
       setSyncDialogOpen(true); // Show sync confirmation
@@ -262,6 +314,7 @@ const VehiclePricing = () => {
               <TableRow>
                 <TableCell><strong>Vehicle Type</strong></TableCell>
                 <TableCell><strong>Label</strong></TableCell>
+                <TableCell><strong>Icon</strong></TableCell>
                 <TableCell><strong>Capacity</strong></TableCell>
                 <TableCell><strong>Base Price</strong></TableCell>
                 <TableCell><strong>Price per Km</strong></TableCell>
@@ -275,7 +328,7 @@ const VehiclePricing = () => {
                 // Loading skeletons
                 Array.from({ length: 5 }).map((_, index) => (
                   <TableRow key={index}>
-                    {Array.from({ length: 8 }).map((_, cellIndex) => (
+                    {Array.from({ length: 9 }).map((_, cellIndex) => (
                       <TableCell key={cellIndex}>
                         <Skeleton variant="text" />
                       </TableCell>
@@ -285,7 +338,13 @@ const VehiclePricing = () => {
               ) : (
                 vehicleTypes
                   .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                  .map((vehicle) => (
+                  .map((vehicle) => {
+                    if (editingId === vehicle.id) {
+                      console.log('🔧 DEBUG: Rendering edit mode for vehicle:', vehicle.id);
+                      console.log('🔧 DEBUG: Current editData:', editData);
+                      console.log('🔧 DEBUG: editData.iconKey:', editData.iconKey);
+                    }
+                    return (
                     <TableRow key={vehicle.id} hover>
                       <TableCell>
                         <Typography variant="body2" fontWeight="bold">
@@ -302,6 +361,34 @@ const VehiclePricing = () => {
                           />
                         ) : (
                           vehicle.label
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {editingId === vehicle.id ? (
+                          <FormControl size="small" fullWidth>
+                            <InputLabel id={`icon-select-${vehicle.id}`}>Icon</InputLabel>
+                            <Select
+                              labelId={`icon-select-${vehicle.id}`}
+                              label="Icon"
+                              value={editData.iconKey || 'default'}
+                              onChange={(e) => {
+                                console.log('🔧 DEBUG: Select onChange triggered, new value:', e.target.value);
+                                handleEditInputChange('iconKey', e.target.value);
+                              }}
+                            >
+                              {iconOptions.map((option) => (
+                                <MenuItem key={option.value} value={option.value}>
+                                  {option.label}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                        ) : (
+                          <Chip
+                            label={iconOptions.find(opt => opt.value === vehicle.iconKey)?.label || 'Default'}
+                            variant="outlined"
+                            size="small"
+                          />
                         )}
                       </TableCell>
                       <TableCell>
@@ -397,19 +484,31 @@ const VehiclePricing = () => {
                             </Tooltip>
                           </Box>
                         ) : (
-                          <Tooltip title="Edit pricing">
-                            <IconButton
-                              onClick={() => handleEdit(vehicle)}
-                              color="primary"
-                              size="small"
-                            >
-                              <EditIcon />
-                            </IconButton>
-                          </Tooltip>
+                          <Box sx={{ display: 'flex', gap: 1 }}>
+                            <Tooltip title="Edit pricing">
+                              <IconButton
+                                onClick={() => handleEdit(vehicle)}
+                                color="primary"
+                                size="small"
+                              >
+                                <EditIcon />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Delete vehicle type permanently">
+                              <IconButton
+                                onClick={() => handleDeleteVehicle(vehicle)}
+                                color="error"
+                                size="small"
+                              >
+                                <DeleteIcon />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
                         )}
                       </TableCell>
                     </TableRow>
-                  ))
+                    );
+                  })
               )}
             </TableBody>
           </Table>
@@ -493,11 +592,51 @@ const VehiclePricing = () => {
               fullWidth
               required
             />
+            <FormControl fullWidth required>
+              <InputLabel>Icon</InputLabel>
+              <Select
+                value={newVehicle.iconKey}
+                label="Icon"
+                onChange={(e) => setNewVehicle(prev => ({ ...prev, iconKey: e.target.value }))}
+              >
+                {iconOptions.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setAddDialogOpen(false)}>Cancel</Button>
           <Button onClick={handleAddVehicle} variant="contained">Create Vehicle Type</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <DeleteIcon color="error" />
+          Confirm Vehicle Type Deletion
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" gutterBottom>
+            Are you sure you want to permanently delete the vehicle type:
+          </Typography>
+          <Typography variant="h6" color="primary" gutterBottom>
+            {vehicleToDelete?.label} ({vehicleToDelete?.vehicleType})
+          </Typography>
+          <Typography variant="body2" color="error" sx={{ mt: 2, p: 2, backgroundColor: '#ffebee', borderRadius: 1 }}>
+            <strong>⚠️ Warning:</strong> This action will permanently remove the vehicle type from the database. 
+            This cannot be undone! Make sure no existing bookings are using this vehicle type before proceeding.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+          <Button onClick={confirmDeleteVehicle} variant="contained" color="error">
+            Delete Permanently
+          </Button>
         </DialogActions>
       </Dialog>
 

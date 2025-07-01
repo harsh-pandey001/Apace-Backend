@@ -87,6 +87,17 @@ const VehicleType = sequelize.define('VehicleType', {
   isActive: {
     type: DataTypes.BOOLEAN,
     defaultValue: true
+  },
+  iconKey: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    defaultValue: 'default',
+    validate: {
+      isIn: {
+        args: [['truck', 'bike', 'car', 'van', 'bus', 'tractor', 'container', 'default']],
+        msg: 'Icon key must be one of: truck, bike, car, van, bus, tractor, container, default'
+      }
+    }
   }
 }, {
   timestamps: true,
