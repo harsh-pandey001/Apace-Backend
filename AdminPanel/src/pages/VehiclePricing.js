@@ -68,6 +68,21 @@ const VehiclePricing = () => {
     iconKey: 'default'
   });
 
+  // Validation states
+  const [validationErrors, setValidationErrors] = useState({
+    capacity: '',
+    basePrice: '',
+    pricePerKm: '',
+    startingPrice: ''
+  });
+
+  const [editValidationErrors, setEditValidationErrors] = useState({
+    capacity: '',
+    basePrice: '',
+    pricePerKm: '',
+    startingPrice: ''
+  });
+
   // Icon options for dropdown
   const iconOptions = [
     { label: 'Truck', value: 'truck' },
@@ -79,6 +94,64 @@ const VehiclePricing = () => {
     { label: 'Container', value: 'container' },
     { label: 'Default', value: 'default' }
   ];
+
+  // Validation functions
+  const validateCapacity = (value) => {
+    if (!value || value.trim() === '') {
+      return 'Capacity is required';
+    }
+    
+    // Remove existing "kg" suffix for validation
+    const cleanValue = value.replace(/\s*kg\s*$/i, '').trim();
+    
+    if (!/^\d+(\.\d+)?$/.test(cleanValue)) {
+      return 'Enter a valid number under 100000 for capacity.';
+    }
+    
+    const numValue = parseFloat(cleanValue);
+    if (numValue <= 0) {
+      return 'Enter a valid number under 100000 for capacity.';
+    }
+    
+    if (numValue > 100000) {
+      return 'Enter a valid number under 100000 for capacity.';
+    }
+    
+    return '';
+  };
+
+  const validatePrice = (value, fieldName) => {
+    if (!value || value.toString().trim() === '') {
+      return `${fieldName} is required`;
+    }
+    
+    const numValue = parseFloat(value);
+    if (isNaN(numValue) || numValue < 0) {
+      return 'Enter a valid price (number or decimal only).';
+    }
+    
+    return '';
+  };
+
+  const formatCapacityValue = (value) => {
+    if (!value) return '';
+    
+    // Remove existing "kg" suffix
+    const cleanValue = value.replace(/\s*kg\s*$/i, '').trim();
+    
+    // Return just the number for display in input
+    return cleanValue;
+  };
+
+  const formatPriceValue = (value) => {
+    if (!value) return '';
+    
+    const numValue = parseFloat(value);
+    if (isNaN(numValue)) return value;
+    
+    // Format to 2 decimal places
+    return numValue.toFixed(2);
+  };
 
   // Fetch vehicle types
   const fetchVehicleTypes = useCallback(async () => {
@@ -101,21 +174,25 @@ const VehiclePricing = () => {
 
   // Handle edit mode
   const handleEdit = (vehicle) => {
-    console.log('🔧 DEBUG: handleEdit called with vehicle:', vehicle);
-    console.log('🔧 DEBUG: vehicle.iconKey:', vehicle.iconKey);
-    
     setEditingId(vehicle.id);
     const editDataToSet = {
       basePrice: vehicle.basePrice,
       pricePerKm: vehicle.pricePerKm,
       startingPrice: vehicle.startingPrice,
-      capacity: vehicle.capacity,
+      capacity: vehicle.capacity, // Keep original format for editing
       label: vehicle.label,
       iconKey: vehicle.iconKey || 'default'
     };
     
-    console.log('🔧 DEBUG: editData to set:', editDataToSet);
     setEditData(editDataToSet);
+    
+    // Clear any existing validation errors
+    setEditValidationErrors({
+      capacity: '',
+      basePrice: '',
+      pricePerKm: '',
+      startingPrice: ''
+    });
   };
 
   // Handle cancel edit
@@ -128,21 +205,52 @@ const VehiclePricing = () => {
   const handleSaveEdit = async (vehicleId) => {
     try {
       // Validate input
-      const { basePrice, pricePerKm, startingPrice } = editData;
-      if (!basePrice || !pricePerKm || !startingPrice) {
-        setError('All pricing fields are required');
+      const { capacity, basePrice, pricePerKm, startingPrice } = editData;
+      if (!capacity || !basePrice || !pricePerKm || !startingPrice) {
+        setError('All fields are required');
         return;
       }
 
-      if (parseFloat(basePrice) < 0 || parseFloat(pricePerKm) < 0 || parseFloat(startingPrice) < 0) {
-        setError('Prices must be positive numbers');
+      // Validate each field
+      const capacityError = validateCapacity(capacity);
+      const basePriceError = validatePrice(basePrice, 'Base Price');
+      const pricePerKmError = validatePrice(pricePerKm, 'Price per Km');
+      const startingPriceError = validatePrice(startingPrice, 'Starting Price');
+
+      // Update edit validation errors
+      const newEditErrors = {
+        capacity: capacityError,
+        basePrice: basePriceError,
+        pricePerKm: pricePerKmError,
+        startingPrice: startingPriceError
+      };
+      setEditValidationErrors(newEditErrors);
+
+      // Check if there are any validation errors
+      if (capacityError || basePriceError || pricePerKmError || startingPriceError) {
+        setError('Please fix the validation errors before saving');
         return;
       }
 
-      await vehicleService.updateVehicleType(vehicleId, editData);
+      // Format data for submission
+      const formattedData = {
+        ...editData,
+        capacity: formatCapacityValue(capacity) + ' kg', // Add kg suffix before saving
+        basePrice: formatPriceValue(basePrice),
+        pricePerKm: formatPriceValue(pricePerKm),
+        startingPrice: formatPriceValue(startingPrice)
+      };
+
+      await vehicleService.updateVehicleType(vehicleId, formattedData);
       setSuccess('Vehicle pricing updated successfully!');
       setEditingId(null);
       setEditData({});
+      setEditValidationErrors({
+        capacity: '',
+        basePrice: '',
+        pricePerKm: '',
+        startingPrice: ''
+      });
       await fetchVehicleTypes();
       setSyncDialogOpen(true); // Show sync confirmation
     } catch (err) {
@@ -153,13 +261,67 @@ const VehiclePricing = () => {
 
   // Handle input change during edit
   const handleEditInputChange = (field, value) => {
-    console.log(`🔧 DEBUG: handleEditInputChange called - field: ${field}, value: ${value}`);
     const newEditData = {
       ...editData,
       [field]: value
     };
-    console.log('🔧 DEBUG: new editData:', newEditData);
     setEditData(newEditData);
+
+    // Real-time validation
+    let error = '';
+    if (field === 'capacity') {
+      error = validateCapacity(value);
+    } else if (['basePrice', 'pricePerKm', 'startingPrice'].includes(field)) {
+      const fieldName = field === 'basePrice' ? 'Base Price' : 
+                       field === 'pricePerKm' ? 'Price per Km' : 'Starting Price';
+      error = validatePrice(value, fieldName);
+    }
+
+    setEditValidationErrors(prev => ({
+      ...prev,
+      [field]: error
+    }));
+  };
+
+  // Handle new vehicle input change with validation
+  const handleNewVehicleInputChange = (field, value) => {
+    setNewVehicle(prev => ({
+      ...prev,
+      [field]: value
+    }));
+
+    // Real-time validation
+    let error = '';
+    if (field === 'capacity') {
+      error = validateCapacity(value);
+    } else if (['basePrice', 'pricePerKm', 'startingPrice'].includes(field)) {
+      const fieldName = field === 'basePrice' ? 'Base Price' : 
+                       field === 'pricePerKm' ? 'Price per Km' : 'Starting Price';
+      error = validatePrice(value, fieldName);
+    }
+
+    setValidationErrors(prev => ({
+      ...prev,
+      [field]: error
+    }));
+  };
+
+  // Check if form is valid (for disabling submit button)
+  const isFormValid = () => {
+    const { vehicleType, label, capacity, basePrice, pricePerKm, startingPrice } = newVehicle;
+    const hasAllFields = vehicleType && label && capacity && basePrice && pricePerKm && startingPrice;
+    const hasNoErrors = !validationErrors.capacity && !validationErrors.basePrice && 
+                       !validationErrors.pricePerKm && !validationErrors.startingPrice;
+    return hasAllFields && hasNoErrors;
+  };
+
+  // Check if edit form is valid
+  const isEditFormValid = () => {
+    const { capacity, basePrice, pricePerKm, startingPrice } = editData;
+    const hasAllFields = capacity && basePrice && pricePerKm && startingPrice;
+    const hasNoErrors = !editValidationErrors.capacity && !editValidationErrors.basePrice && 
+                       !editValidationErrors.pricePerKm && !editValidationErrors.startingPrice;
+    return hasAllFields && hasNoErrors;
   };
 
   // Handle delete vehicle
@@ -186,19 +348,46 @@ const VehiclePricing = () => {
   // Handle add new vehicle
   const handleAddVehicle = async () => {
     try {
-      // Validate input
+      // Validate all fields
       const { vehicleType, label, capacity, basePrice, pricePerKm, startingPrice } = newVehicle;
+      
+      // Basic required field validation
       if (!vehicleType || !label || !capacity || !basePrice || !pricePerKm || !startingPrice) {
         setError('All fields are required');
         return;
       }
 
-      if (parseFloat(basePrice) < 0 || parseFloat(pricePerKm) < 0 || parseFloat(startingPrice) < 0) {
-        setError('Prices must be positive numbers');
+      // Validate capacity
+      const capacityError = validateCapacity(capacity);
+      const basePriceError = validatePrice(basePrice, 'Base Price');
+      const pricePerKmError = validatePrice(pricePerKm, 'Price per Km');
+      const startingPriceError = validatePrice(startingPrice, 'Starting Price');
+
+      // Update validation errors
+      const newErrors = {
+        capacity: capacityError,
+        basePrice: basePriceError,
+        pricePerKm: pricePerKmError,
+        startingPrice: startingPriceError
+      };
+      setValidationErrors(newErrors);
+
+      // Check if there are any validation errors
+      if (capacityError || basePriceError || pricePerKmError || startingPriceError) {
+        setError('Please fix the validation errors before submitting');
         return;
       }
 
-      await vehicleService.createVehicleType(newVehicle);
+      // Format data for submission
+      const formattedData = {
+        ...newVehicle,
+        capacity: formatCapacityValue(capacity) + ' kg', // Add kg suffix before saving
+        basePrice: formatPriceValue(basePrice),
+        pricePerKm: formatPriceValue(pricePerKm),
+        startingPrice: formatPriceValue(startingPrice)
+      };
+
+      await vehicleService.createVehicleType(formattedData);
       setSuccess('Vehicle type created successfully!');
       setAddDialogOpen(false);
       setNewVehicle({
@@ -210,6 +399,12 @@ const VehiclePricing = () => {
         startingPrice: '',
         isActive: true,
         iconKey: 'default'
+      });
+      setValidationErrors({
+        capacity: '',
+        basePrice: '',
+        pricePerKm: '',
+        startingPrice: ''
       });
       await fetchVehicleTypes();
       setSyncDialogOpen(true); // Show sync confirmation
@@ -338,13 +533,7 @@ const VehiclePricing = () => {
               ) : (
                 vehicleTypes
                   .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                  .map((vehicle) => {
-                    if (editingId === vehicle.id) {
-                      console.log('🔧 DEBUG: Rendering edit mode for vehicle:', vehicle.id);
-                      console.log('🔧 DEBUG: Current editData:', editData);
-                      console.log('🔧 DEBUG: editData.iconKey:', editData.iconKey);
-                    }
-                    return (
+                  .map((vehicle) => (
                     <TableRow key={vehicle.id} hover>
                       <TableCell>
                         <Typography variant="body2" fontWeight="bold">
@@ -371,10 +560,7 @@ const VehiclePricing = () => {
                               labelId={`icon-select-${vehicle.id}`}
                               label="Icon"
                               value={editData.iconKey || 'default'}
-                              onChange={(e) => {
-                                console.log('🔧 DEBUG: Select onChange triggered, new value:', e.target.value);
-                                handleEditInputChange('iconKey', e.target.value);
-                              }}
+                              onChange={(e) => handleEditInputChange('iconKey', e.target.value)}
                             >
                               {iconOptions.map((option) => (
                                 <MenuItem key={option.value} value={option.value}>
@@ -394,10 +580,19 @@ const VehiclePricing = () => {
                       <TableCell>
                         {editingId === vehicle.id ? (
                           <TextField
-                            value={editData.capacity || ''}
+                            value={formatCapacityValue(editData.capacity || '')}
                             onChange={(e) => handleEditInputChange('capacity', e.target.value)}
                             size="small"
                             fullWidth
+                            error={!!editValidationErrors.capacity}
+                            helperText={editValidationErrors.capacity}
+                            InputProps={{
+                              endAdornment: <InputAdornment position="end">kg</InputAdornment>
+                            }}
+                            inputProps={{
+                              inputMode: 'numeric',
+                              pattern: '[0-9]*'
+                            }}
                           />
                         ) : (
                           vehicle.capacity
@@ -415,6 +610,8 @@ const VehiclePricing = () => {
                             }}
                             size="small"
                             fullWidth
+                            error={!!editValidationErrors.basePrice}
+                            helperText={editValidationErrors.basePrice}
                           />
                         ) : (
                           formatCurrency(vehicle.basePrice)
@@ -432,6 +629,8 @@ const VehiclePricing = () => {
                             }}
                             size="small"
                             fullWidth
+                            error={!!editValidationErrors.pricePerKm}
+                            helperText={editValidationErrors.pricePerKm}
                           />
                         ) : (
                           formatCurrency(vehicle.pricePerKm)
@@ -449,6 +648,8 @@ const VehiclePricing = () => {
                             }}
                             size="small"
                             fullWidth
+                            error={!!editValidationErrors.startingPrice}
+                            helperText={editValidationErrors.startingPrice}
                           />
                         ) : (
                           formatCurrency(vehicle.startingPrice)
@@ -469,6 +670,7 @@ const VehiclePricing = () => {
                                 onClick={() => handleSaveEdit(vehicle.id)}
                                 color="primary"
                                 size="small"
+                                disabled={!isEditFormValid()}
                               >
                                 <SaveIcon />
                               </IconButton>
@@ -507,8 +709,7 @@ const VehiclePricing = () => {
                         )}
                       </TableCell>
                     </TableRow>
-                    );
-                  })
+                  ))
               )}
             </TableBody>
           </Table>
@@ -550,11 +751,20 @@ const VehiclePricing = () => {
             />
             <TextField
               label="Capacity"
-              placeholder="e.g., Up to 2000kg"
-              value={newVehicle.capacity}
-              onChange={(e) => setNewVehicle(prev => ({ ...prev, capacity: e.target.value }))}
+              placeholder="e.g., 2000"
+              value={formatCapacityValue(newVehicle.capacity)}
+              onChange={(e) => handleNewVehicleInputChange('capacity', e.target.value)}
               fullWidth
               required
+              error={!!validationErrors.capacity}
+              helperText={validationErrors.capacity}
+              InputProps={{
+                endAdornment: <InputAdornment position="end">kg</InputAdornment>
+              }}
+              inputProps={{
+                inputMode: 'numeric',
+                pattern: '[0-9]*'
+              }}
             />
             <TextField
               label="Base Price"
@@ -564,9 +774,11 @@ const VehiclePricing = () => {
                 startAdornment: <InputAdornment position="start">₹</InputAdornment>
               }}
               value={newVehicle.basePrice}
-              onChange={(e) => setNewVehicle(prev => ({ ...prev, basePrice: e.target.value }))}
+              onChange={(e) => handleNewVehicleInputChange('basePrice', e.target.value)}
               fullWidth
               required
+              error={!!validationErrors.basePrice}
+              helperText={validationErrors.basePrice}
             />
             <TextField
               label="Price per Km"
@@ -576,9 +788,11 @@ const VehiclePricing = () => {
                 startAdornment: <InputAdornment position="start">₹</InputAdornment>
               }}
               value={newVehicle.pricePerKm}
-              onChange={(e) => setNewVehicle(prev => ({ ...prev, pricePerKm: e.target.value }))}
+              onChange={(e) => handleNewVehicleInputChange('pricePerKm', e.target.value)}
               fullWidth
               required
+              error={!!validationErrors.pricePerKm}
+              helperText={validationErrors.pricePerKm}
             />
             <TextField
               label="Starting Price"
@@ -588,9 +802,11 @@ const VehiclePricing = () => {
                 startAdornment: <InputAdornment position="start">₹</InputAdornment>
               }}
               value={newVehicle.startingPrice}
-              onChange={(e) => setNewVehicle(prev => ({ ...prev, startingPrice: e.target.value }))}
+              onChange={(e) => handleNewVehicleInputChange('startingPrice', e.target.value)}
               fullWidth
               required
+              error={!!validationErrors.startingPrice}
+              helperText={validationErrors.startingPrice}
             />
             <FormControl fullWidth required>
               <InputLabel>Icon</InputLabel>
@@ -610,7 +826,13 @@ const VehiclePricing = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setAddDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleAddVehicle} variant="contained">Create Vehicle Type</Button>
+          <Button 
+            onClick={handleAddVehicle} 
+            variant="contained" 
+            disabled={!isFormValid()}
+          >
+            Create Vehicle Type
+          </Button>
         </DialogActions>
       </Dialog>
 

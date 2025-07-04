@@ -35,7 +35,8 @@
       "Bash(timeout 15s npm start)",
       "Bash(PORT=3001 timeout 15s npm start:*)",
       "Bash(npm test)",
-      "Bash(rg:*)"
+      "Bash(rg:*)",
+      "Bash(/dev/null)"
     ],
     "deny": []
   },

@@ -18,29 +18,64 @@ exports.createVehicleTypeValidation = [
   body('capacity')
     .notEmpty()
     .withMessage('Capacity is required')
-    .isString()
-    .withMessage('Capacity must be a string'),
+    .custom((value) => {
+      // Remove " kg" suffix if present for validation
+      const cleanValue = value.replace(/\s*kg\s*$/i, '').trim();
+      
+      // Check if it's a valid number
+      if (!/^\d+(\.\d+)?$/.test(cleanValue)) {
+        throw new Error('Enter a valid number under 100000 for capacity.');
+      }
+      
+      const numValue = parseFloat(cleanValue);
+      if (numValue <= 0) {
+        throw new Error('Enter a valid number under 100000 for capacity.');
+      }
+      
+      if (numValue > 100000) {
+        throw new Error('Enter a valid number under 100000 for capacity.');
+      }
+      
+      return true;
+    })
+    .customSanitizer((value) => {
+      // Remove existing " kg" suffix and add it back
+      const cleanValue = value.replace(/\s*kg\s*$/i, '').trim();
+      return `${cleanValue} kg`;
+    }),
   
   body('basePrice')
     .notEmpty()
     .withMessage('Base price is required')
     .isFloat({ min: 0 })
-    .withMessage('Base price must be a positive number')
-    .toFloat(),
+    .withMessage('Enter a valid price (number or decimal only).')
+    .toFloat()
+    .customSanitizer((value) => {
+      // Format to 2 decimal places
+      return parseFloat(value).toFixed(2);
+    }),
   
   body('pricePerKm')
     .notEmpty()
     .withMessage('Price per km is required')
     .isFloat({ min: 0 })
-    .withMessage('Price per km must be a positive number')
-    .toFloat(),
+    .withMessage('Enter a valid price (number or decimal only).')
+    .toFloat()
+    .customSanitizer((value) => {
+      // Format to 2 decimal places
+      return parseFloat(value).toFixed(2);
+    }),
   
   body('startingPrice')
     .notEmpty()
     .withMessage('Starting price is required')
     .isFloat({ min: 0 })
-    .withMessage('Starting price must be a positive number')
-    .toFloat(),
+    .withMessage('Enter a valid price (number or decimal only).')
+    .toFloat()
+    .customSanitizer((value) => {
+      // Format to 2 decimal places
+      return parseFloat(value).toFixed(2);
+    }),
   
   body('isActive')
     .optional()
@@ -73,26 +108,67 @@ exports.updateVehicleTypeValidation = [
   
   body('capacity')
     .optional()
-    .isString()
-    .withMessage('Capacity must be a string'),
+    .custom((value) => {
+      if (value === undefined || value === null) return true; // Optional field
+      
+      // Remove " kg" suffix if present for validation
+      const cleanValue = value.replace(/\s*kg\s*$/i, '').trim();
+      
+      // Check if it's a valid number
+      if (!/^\d+(\.\d+)?$/.test(cleanValue)) {
+        throw new Error('Enter a valid number under 100000 for capacity.');
+      }
+      
+      const numValue = parseFloat(cleanValue);
+      if (numValue <= 0) {
+        throw new Error('Enter a valid number under 100000 for capacity.');
+      }
+      
+      if (numValue > 100000) {
+        throw new Error('Enter a valid number under 100000 for capacity.');
+      }
+      
+      return true;
+    })
+    .customSanitizer((value) => {
+      if (value === undefined || value === null) return value;
+      // Remove existing " kg" suffix and add it back
+      const cleanValue = value.replace(/\s*kg\s*$/i, '').trim();
+      return `${cleanValue} kg`;
+    }),
   
   body('basePrice')
     .optional()
     .isFloat({ min: 0 })
-    .withMessage('Base price must be a positive number')
-    .toFloat(),
+    .withMessage('Enter a valid price (number or decimal only).')
+    .toFloat()
+    .customSanitizer((value) => {
+      if (value === undefined || value === null) return value;
+      // Format to 2 decimal places
+      return parseFloat(value).toFixed(2);
+    }),
   
   body('pricePerKm')
     .optional()
     .isFloat({ min: 0 })
-    .withMessage('Price per km must be a positive number')
-    .toFloat(),
+    .withMessage('Enter a valid price (number or decimal only).')
+    .toFloat()
+    .customSanitizer((value) => {
+      if (value === undefined || value === null) return value;
+      // Format to 2 decimal places
+      return parseFloat(value).toFixed(2);
+    }),
   
   body('startingPrice')
     .optional()
     .isFloat({ min: 0 })
-    .withMessage('Starting price must be a positive number')
-    .toFloat(),
+    .withMessage('Enter a valid price (number or decimal only).')
+    .toFloat()
+    .customSanitizer((value) => {
+      if (value === undefined || value === null) return value;
+      // Format to 2 decimal places
+      return parseFloat(value).toFixed(2);
+    }),
   
   body('isActive')
     .optional()
