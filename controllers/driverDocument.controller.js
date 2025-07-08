@@ -1,4 +1,4 @@
-const { DriverDocument, User } = require('../models');
+const { DriverDocument, Driver } = require('../models');
 const fs = require('fs');
 const path = require('path');
 
@@ -6,17 +6,18 @@ const driverDocumentController = {
   // Upload driver documents
   uploadDocuments: async (req, res) => {
     try {
-      const { driverId } = req.body;
+      // Use authenticated driver's ID from JWT token
+      const driverId = req.user.id;
 
       if (!driverId) {
         return res.status(400).json({
           success: false,
-          message: 'Driver ID is required'
+          message: 'Driver authentication required'
         });
       }
 
       // Check if driver exists
-      const driver = await User.findByPk(driverId);
+      const driver = await Driver.findByPk(driverId);
       if (!driver) {
         return res.status(404).json({
           success: false,
@@ -98,13 +99,14 @@ const driverDocumentController = {
     }
   },
 
-  // Get driver documents and status
-  getDriverDocuments: async (req, res) => {
+  // Get current authenticated driver's documents
+  getMyDocuments: async (req, res) => {
     try {
-      const { driverId } = req.params;
+      // Use authenticated driver's ID from JWT token
+      const driverId = req.user.id;
 
-      // Check if driver exists
-      const driver = await User.findByPk(driverId);
+      // Check if driver exists (should always exist since they're authenticated)
+      const driver = await Driver.findByPk(driverId);
       if (!driver) {
         return res.status(404).json({
           success: false,
@@ -116,9 +118,95 @@ const driverDocumentController = {
       const driverDocument = await DriverDocument.findOne({
         where: { driver_id: driverId },
         include: [{
-          model: User,
-          as: 'driver',
-          attributes: ['id', 'firstName', 'lastName', 'email', 'phone']
+          model: Driver,
+          as: 'driverProfile',
+          attributes: ['id', 'name', 'email', 'phone']
+        }]
+      });
+
+      if (!driverDocument) {
+        return res.status(200).json({
+          success: true,
+          message: 'No documents found for this driver',
+          data: {
+            driver_id: driverId,
+            driver: driver,
+            status: 'not_uploaded',
+            documents: {
+              driving_license: { uploaded: false, path: null },
+              passport_photo: { uploaded: false, path: null },
+              vehicle_rc: { uploaded: false, path: null },
+              insurance_paper: { uploaded: false, path: null }
+            }
+          }
+        });
+      }
+
+      // Prepare response data
+      const responseData = {
+        id: driverDocument.id,
+        driver_id: driverDocument.driver_id,
+        driver: driverDocument.driverProfile,
+        status: driverDocument.status,
+        rejection_reason: driverDocument.rejection_reason,
+        uploaded_at: driverDocument.uploaded_at,
+        updated_at: driverDocument.updated_at,
+        documents: {
+          driving_license: {
+            uploaded: !!driverDocument.driving_license_path,
+            path: driverDocument.driving_license_path
+          },
+          passport_photo: {
+            uploaded: !!driverDocument.passport_photo_path,
+            path: driverDocument.passport_photo_path
+          },
+          vehicle_rc: {
+            uploaded: !!driverDocument.vehicle_rc_path,
+            path: driverDocument.vehicle_rc_path
+          },
+          insurance_paper: {
+            uploaded: !!driverDocument.insurance_paper_path,
+            path: driverDocument.insurance_paper_path
+          }
+        }
+      };
+
+      res.status(200).json({
+        success: true,
+        data: responseData
+      });
+
+    } catch (error) {
+      console.error('Get my documents error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve driver documents',
+        error: error.message
+      });
+    }
+  },
+
+  // Get driver documents and status
+  getDriverDocuments: async (req, res) => {
+    try {
+      const { driverId } = req.params;
+
+      // Check if driver exists
+      const driver = await Driver.findByPk(driverId);
+      if (!driver) {
+        return res.status(404).json({
+          success: false,
+          message: 'Driver not found'
+        });
+      }
+
+      // Get driver documents
+      const driverDocument = await DriverDocument.findOne({
+        where: { driver_id: driverId },
+        include: [{
+          model: Driver,
+          as: 'driverProfile',
+          attributes: ['id', 'name', 'email', 'phone']
         }]
       });
 
@@ -133,7 +221,7 @@ const driverDocumentController = {
       const responseData = {
         id: driverDocument.id,
         driver_id: driverDocument.driver_id,
-        driver: driverDocument.driver,
+        driver: driverDocument.driverProfile,
         status: driverDocument.status,
         rejection_reason: driverDocument.rejection_reason,
         uploaded_at: driverDocument.uploaded_at,
@@ -190,7 +278,7 @@ const driverDocumentController = {
       }
 
       // Check if driver exists
-      const driver = await User.findByPk(driverId);
+      const driver = await Driver.findByPk(driverId);
       if (!driver) {
         return res.status(404).json({
           success: false,

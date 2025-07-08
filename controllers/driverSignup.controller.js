@@ -1,0 +1,350 @@
+const { validationResult } = require('express-validator');
+const { Op } = require('sequelize');
+const { Driver, OtpVerification, VehicleType } = require('../models');
+const { AppError } = require('../middleware/errorHandler');
+const { logger } = require('../utils/logger');
+const { 
+  createOrUpdateOTP, 
+  verifyOTP, 
+  sendOTPviaSMS 
+} = require('../utils/otpUtils');
+
+// Helper function to find driver by phone
+const findDriverByPhone = async (phone) => {
+  return await Driver.findOne({ where: { phone } });
+};
+
+// Helper function to find driver by email
+const findDriverByEmail = async (email) => {
+  return await Driver.findOne({ where: { email } });
+};
+
+// Helper function to find driver by vehicle number
+const findDriverByVehicleNumber = async (vehicleNumber) => {
+  return await Driver.findOne({ where: { vehicleNumber } });
+};
+
+// Driver signup endpoint
+exports.driverSignup = async (req, res, next) => {
+  try {
+    // Check for validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        status: 'fail',
+        errors: errors.array()
+      });
+    }
+
+    const { 
+      phone, 
+      name, 
+      email, 
+      vehicleType, 
+      vehicleCapacity, 
+      vehicleNumber,
+      otp 
+    } = req.body;
+
+    // Verify OTP first
+    const verificationResult = await verifyOTP(phone, otp);
+    
+    if (!verificationResult.valid) {
+      return next(new AppError(verificationResult.message, 400));
+    }
+
+    // Check if phone already exists
+    const existingDriverWithPhone = await findDriverByPhone(phone);
+    if (existingDriverWithPhone) {
+      return next(new AppError('Phone number already registered', 400));
+    }
+
+    // Check if email already exists
+    const existingDriverWithEmail = await findDriverByEmail(email);
+    if (existingDriverWithEmail) {
+      return next(new AppError('Email already in use', 400));
+    }
+
+    // Check if vehicle number already exists
+    const existingDriverWithVehicle = await findDriverByVehicleNumber(vehicleNumber);
+    if (existingDriverWithVehicle) {
+      return next(new AppError('Vehicle number already registered', 400));
+    }
+
+    // Vehicle type validation is now handled by express-validator (max 20 characters)
+
+    // Create new driver
+    const newDriver = await Driver.create({
+      name,
+      email,
+      phone,
+      vehicleType,
+      vehicleCapacity,
+      vehicleNumber
+    });
+
+    logger.info(`New driver registered: ${newDriver.email}`);
+
+    res.status(201).json({
+      status: 'success',
+      message: 'Driver registration successful',
+      data: {
+        driver: {
+          id: newDriver.id,
+          name: newDriver.name,
+          email: newDriver.email,
+          phone: newDriver.phone,
+          vehicleType: newDriver.vehicleType,
+          vehicleCapacity: newDriver.vehicleCapacity,
+          vehicleNumber: newDriver.vehicleNumber,
+          availability_status: newDriver.availability_status,
+          isActive: newDriver.isActive,
+          isVerified: newDriver.isVerified
+        }
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get all drivers (admin only)
+exports.getAllDrivers = async (req, res, next) => {
+  try {
+    const drivers = await Driver.findAll({
+      attributes: [
+        'id', 
+        'name', 
+        'email', 
+        'phone', 
+        'vehicleType', 
+        'vehicleCapacity', 
+        'vehicleNumber', 
+        'availability_status',
+        'isActive',
+        'isVerified',
+        'createdAt'
+      ]
+    });
+
+    res.status(200).json({
+      status: 'success',
+      results: drivers.length,
+      data: {
+        drivers
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get driver by ID (admin only)
+exports.getDriverById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    
+    const driver = await Driver.findByPk(id, {
+      attributes: [
+        'id', 
+        'name', 
+        'email', 
+        'phone', 
+        'vehicleType', 
+        'vehicleCapacity', 
+        'vehicleNumber', 
+        'availability_status',
+        'isActive',
+        'isVerified',
+        'createdAt'
+      ]
+    });
+
+    if (!driver) {
+      return next(new AppError('Driver not found', 404));
+    }
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        driver
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Update driver availability status
+exports.updateDriverAvailability = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { availability_status } = req.body;
+
+    // Validate availability_status
+    if (!['online', 'offline'].includes(availability_status)) {
+      return next(new AppError('Invalid availability status. Must be online or offline', 400));
+    }
+
+    const driver = await Driver.findByPk(id);
+    
+    if (!driver) {
+      return next(new AppError('Driver not found', 404));
+    }
+
+    // Update availability status
+    await driver.update({ availability_status });
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Driver availability updated successfully',
+      data: {
+        driver: {
+          id: driver.id,
+          availability_status: driver.availability_status
+        }
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get current driver profile
+exports.getDriverProfile = async (req, res, next) => {
+  try {
+    // req.user is set by the auth middleware and should contain the driver info
+    const driver = req.user;
+
+    // Return driver profile information
+    res.status(200).json({
+      status: 'success',
+      data: {
+        driver: {
+          id: driver.id,
+          name: driver.name,
+          email: driver.email,
+          phone: driver.phone,
+          vehicleType: driver.vehicleType,
+          vehicleCapacity: driver.vehicleCapacity,
+          vehicleNumber: driver.vehicleNumber,
+          availability_status: driver.availability_status,
+          isActive: driver.isActive,
+          isVerified: driver.isVerified
+        }
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Update current driver profile
+exports.updateDriverProfile = async (req, res, next) => {
+  try {
+    // Check for validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        status: 'fail',
+        message: errors.array()[0].msg,
+        errors: errors.array()
+      });
+    }
+
+    // Get the authenticated driver ID from JWT token
+    const driverId = req.user.id;
+
+    // Extract allowed fields from request body
+    const allowedFields = ['name', 'email', 'vehicleType', 'vehicleCapacity', 'vehicleNumber'];
+    const updateData = {};
+    
+    // Only include fields that are present in the request body
+    allowedFields.forEach(field => {
+      if (req.body.hasOwnProperty(field)) {
+        updateData[field] = req.body[field];
+      }
+    });
+
+    // Check if driver exists and update
+    const driver = await Driver.findByPk(driverId);
+    if (!driver) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'Driver not found'
+      });
+    }
+
+    // Check for email uniqueness if email is being updated
+    if (updateData.email && updateData.email !== driver.email) {
+      const existingDriverWithEmail = await Driver.findOne({
+        where: { 
+          email: updateData.email,
+          id: { [Op.ne]: driverId }
+        }
+      });
+      
+      if (existingDriverWithEmail) {
+        return res.status(400).json({
+          status: 'fail',
+          message: 'Email address is already in use by another driver'
+        });
+      }
+    }
+
+    // Check for vehicle number uniqueness if vehicleNumber is being updated
+    if (updateData.vehicleNumber && updateData.vehicleNumber !== driver.vehicleNumber) {
+      const existingDriverWithVehicleNumber = await Driver.findOne({
+        where: { 
+          vehicleNumber: updateData.vehicleNumber,
+          id: { [Op.ne]: driverId }
+        }
+      });
+      
+      if (existingDriverWithVehicleNumber) {
+        return res.status(400).json({
+          status: 'fail',
+          message: 'Vehicle number is already in use by another driver'
+        });
+      }
+    }
+
+    // Update the driver
+    await driver.update(updateData);
+
+    // Fetch the updated driver data
+    const updatedDriver = await Driver.findByPk(driverId);
+
+    logger.info(`Driver profile updated successfully: ${driverId}`, {
+      updatedFields: Object.keys(updateData),
+      driverId
+    });
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Driver profile updated successfully',
+      data: {
+        driver: {
+          id: updatedDriver.id,
+          name: updatedDriver.name,
+          email: updatedDriver.email,
+          phone: updatedDriver.phone,
+          vehicleType: updatedDriver.vehicleType,
+          vehicleCapacity: updatedDriver.vehicleCapacity,
+          vehicleNumber: updatedDriver.vehicleNumber,
+          availability_status: updatedDriver.availability_status,
+          isActive: updatedDriver.isActive,
+          isVerified: updatedDriver.isVerified,
+          createdAt: updatedDriver.createdAt,
+          updatedAt: updatedDriver.updatedAt
+        }
+      }
+    });
+  } catch (error) {
+    logger.error(`Driver profile update failed: ${error.message}`, {
+      driverId: req.user?.id,
+      error: error.message
+    });
+    next(error);
+  }
+};

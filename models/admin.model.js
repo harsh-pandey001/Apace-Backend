@@ -1,7 +1,7 @@
 const { DataTypes } = require('sequelize');
 const { sequelize } = require('../config/database');
 
-const User = sequelize.define('User', {
+const Admin = sequelize.define('Admin', {
   id: {
     type: DataTypes.UUID,
     defaultValue: DataTypes.UUIDV4,
@@ -52,10 +52,15 @@ const User = sequelize.define('User', {
         }
       }
     }
+  },
+  permissions: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: null
   }
 }, {
   timestamps: true,
-  tableName: 'users'
+  tableName: 'admins'
 });
 
-module.exports = User;
+module.exports = Admin;

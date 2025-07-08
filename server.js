@@ -21,6 +21,8 @@ const addressRoutes = require('./routes/address.routes');
 const preferencesRoutes = require('./routes/preferences.routes');
 const driverDocumentRoutes = require('./routes/driverDocument.routes');
 const driverStatusRoutes = require('./routes/driverStatus.routes');
+const driverSignupRoutes = require('./routes/driverSignup.routes');
+const driverAuthRoutes = require('./routes/driverAuth.routes');
 const vehicleTypeRoutes = require('./routes/vehicleType.routes');
 
 // Initialize Express app
@@ -85,6 +87,8 @@ app.use('/api/addresses', addressRoutes);
 app.use('/api/preferences', preferencesRoutes);
 app.use('/api', driverDocumentRoutes);
 app.use('/api/driver', driverStatusRoutes);
+app.use('/api/drivers', driverSignupRoutes);
+app.use('/api/driver-auth', driverAuthRoutes);
 app.use('/api/vehicles', vehicleTypeRoutes);
 
 // Error handling middleware (should be last)

@@ -1,6 +1,37 @@
 const jwt = require('jsonwebtoken');
 const { AppError } = require('./errorHandler');
-const { User } = require('../models');
+const { User, Driver, Admin } = require('../models');
+
+/**
+ * Helper function to find user by ID and role
+ */
+const findUserByIdAndRole = async (id, role) => {
+  let user;
+  
+  switch (role) {
+    case 'driver':
+      user = await Driver.findByPk(id);
+      if (user) {
+        return { user, role: 'driver', activeField: 'isActive' };
+      }
+      break;
+    case 'admin':
+      user = await Admin.findByPk(id);
+      if (user) {
+        return { user, role: 'admin', activeField: 'active' };
+      }
+      break;
+    case 'user':
+    default:
+      user = await User.findByPk(id);
+      if (user) {
+        return { user, role: 'user', activeField: 'active' };
+      }
+      break;
+  }
+  
+  return null;
+};
 
 /**
  * Middleware to protect routes that require authentication
@@ -23,19 +54,32 @@ exports.protect = async (req, res, next) => {
     // 2) Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // 3) Check if user still exists
-    const currentUser = await User.findByPk(decoded.id);
-    if (!currentUser) {
+    // 3) Check if user still exists based on role
+    // If token doesn't have role (old tokens), try to find in all tables
+    let userResult;
+    if (decoded.role) {
+      userResult = await findUserByIdAndRole(decoded.id, decoded.role);
+    } else {
+      // For backward compatibility, check all tables
+      userResult = await findUserByIdAndRole(decoded.id, 'user') ||
+                   await findUserByIdAndRole(decoded.id, 'driver') ||
+                   await findUserByIdAndRole(decoded.id, 'admin');
+    }
+    
+    if (!userResult) {
       return next(new AppError('The user belonging to this token no longer exists.', 401));
     }
 
+    const { user: currentUser, role, activeField } = userResult;
+
     // 4) Check if user account is active
-    if (!currentUser.active) {
+    if (!currentUser[activeField]) {
       return next(new AppError('Your account has been deactivated. Please contact support.', 401));
     }
 
     // GRANT ACCESS TO PROTECTED ROUTE
     req.user = currentUser;
+    req.user.role = role; // Ensure role is available on req.user
     next();
   } catch (error) {
     if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {

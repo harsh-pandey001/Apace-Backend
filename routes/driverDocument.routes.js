@@ -26,6 +26,13 @@ router.post('/driver/documents/upload',
   driverDocumentController.uploadDocuments
 );
 
+// Get current authenticated driver's documents (more secure)
+router.get('/driver/documents/my',
+  protect,
+  driverDocumentController.getMyDocuments
+);
+
+// Get driver documents by ID (admin or specific driver access)
 router.get('/driver/documents/:driverId',
   protect,
   ...driverDocumentValidation.getDriverDocuments,

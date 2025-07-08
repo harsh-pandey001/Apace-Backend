@@ -258,6 +258,21 @@ exports.getDriverShipments = async (req, res, next) => {
     
     const vehicleIds = vehicles.map(vehicle => vehicle.id);
     
+    // If driver has no vehicles assigned, return empty result
+    if (vehicleIds.length === 0) {
+      return res.status(200).json({
+        status: 'success',
+        results: 0,
+        totalShipments: 0,
+        totalPages: 0,
+        currentPage: page,
+        data: {
+          shipments: []
+        },
+        message: 'No vehicles assigned to this driver'
+      });
+    }
+    
     // Status filter
     const status = req.query.status;
     const whereConditions = {

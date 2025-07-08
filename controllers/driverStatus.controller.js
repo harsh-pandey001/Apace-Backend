@@ -1,28 +1,37 @@
 const { validationResult } = require('express-validator');
-const { User } = require('../models');
+const { Driver } = require('../models');
 const { AppError } = require('../middleware/errorHandler');
 const { logger } = require('../utils/logger');
 
 // Get current driver status
 exports.getDriverStatus = async (req, res, next) => {
   try {
-    const user = await User.findByPk(req.user.id, {
-      attributes: ['id', 'availability_status', 'role']
-    });
+    // Since we're using role-based auth, req.user should already be the driver
+    const driver = req.user;
 
-    if (!user) {
-      return next(new AppError('User not found', 404));
+    // Double-check that this is actually a driver
+    if (req.user.role !== 'driver') {
+      return next(new AppError('Only drivers can access this endpoint', 403));
     }
 
-    // Check if user is a driver
-    if (user.role !== 'driver') {
-      return next(new AppError('Only drivers can access this endpoint', 403));
+    // If we need fresh data, query the driver
+    const currentDriver = await Driver.findByPk(driver.id, {
+      attributes: ['id', 'availability_status', 'name', 'vehicleType']
+    });
+
+    if (!currentDriver) {
+      return next(new AppError('Driver not found', 404));
     }
 
     res.status(200).json({
       success: true,
       data: {
-        status: user.availability_status
+        status: currentDriver.availability_status,
+        driver: {
+          id: currentDriver.id,
+          name: currentDriver.name,
+          vehicleType: currentDriver.vehicleType
+        }
       }
     });
   } catch (error) {
@@ -46,28 +55,33 @@ exports.updateDriverStatus = async (req, res, next) => {
 
     const { status } = req.body;
 
-    // Find the user
-    const user = await User.findByPk(req.user.id);
-
-    if (!user) {
-      return next(new AppError('User not found', 404));
-    }
-
-    // Check if user is a driver
-    if (user.role !== 'driver') {
+    // Double-check that this is actually a driver
+    if (req.user.role !== 'driver') {
       return next(new AppError('Only drivers can update availability status', 403));
     }
 
-    // Update availability status
-    await user.update({ availability_status: status });
+    // Find the driver
+    const driver = await Driver.findByPk(req.user.id);
 
-    logger.info(`Driver ${user.id} updated status to: ${status}`);
+    if (!driver) {
+      return next(new AppError('Driver not found', 404));
+    }
+
+    // Update availability status
+    await driver.update({ availability_status: status });
+
+    logger.info(`Driver ${driver.id} updated status to: ${status}`);
 
     res.status(200).json({
       success: true,
       message: 'Driver status updated successfully',
       data: {
-        status: status
+        status: status,
+        driver: {
+          id: driver.id,
+          name: driver.name,
+          availability_status: driver.availability_status
+        }
       }
     });
   } catch (error) {

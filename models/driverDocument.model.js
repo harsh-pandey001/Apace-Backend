@@ -11,7 +11,7 @@ module.exports = (sequelize) => {
       type: DataTypes.UUID,
       allowNull: false,
       references: {
-        model: 'users',
+        model: 'drivers',
         key: 'id'
       }
     },
@@ -64,7 +64,7 @@ module.exports = (sequelize) => {
   });
 
   DriverDocument.associate = (models) => {
-    DriverDocument.belongsTo(models.User, {
+    DriverDocument.belongsTo(models.Driver, {
       foreignKey: 'driver_id',
       as: 'driver'
     });

@@ -3,11 +3,7 @@ const { body, param, query } = require('express-validator');
 const driverDocumentValidation = {
   // Validation for document upload
   uploadDocuments: [
-    body('driverId')
-      .notEmpty()
-      .withMessage('Driver ID is required')
-      .isUUID()
-      .withMessage('Driver ID must be a valid UUID')
+    // No additional validation needed - driver ID comes from JWT token
   ],
 
   // Validation for getting driver documents
