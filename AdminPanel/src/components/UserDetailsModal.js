@@ -15,6 +15,8 @@ import {
 import {
   Close as CloseIcon,
   Person as PersonIcon,
+  DirectionsCar as DriverIcon,
+  AdminPanelSettings as AdminIcon,
 } from '@mui/icons-material';
 import UserDetailsCard from './UserDetailsCard';
 import userService from '../services/userService';
@@ -63,6 +65,20 @@ const UserDetailsModal = ({ open, userId, onClose }) => {
     }
   };
 
+  // Get the appropriate icon and title based on user type
+  const getUserTypeInfo = () => {
+    if (!user) return { icon: PersonIcon, title: 'User Details' };
+    
+    switch (user.role) {
+      case 'driver':
+        return { icon: DriverIcon, title: 'Driver Details' };
+      case 'admin':
+        return { icon: AdminIcon, title: 'Admin Details' };
+      default:
+        return { icon: PersonIcon, title: 'User Details' };
+    }
+  };
+
   // Handle toggling user status (active/inactive)
   const handleToggleStatus = async () => {
     if (!user) return;
@@ -92,39 +108,6 @@ const UserDetailsModal = ({ open, userId, onClose }) => {
         message: 'Failed to update user status. Please try again.',
         severity: 'error',
       });
-    }
-  };
-  
-  // Handle updating user role
-  const handleUpdateRole = async (userId, newRole) => {
-    if (!userId || !newRole) return;
-    
-    try {
-      // Call API to update user role
-      const response = await userService.updateUser(userId, { role: newRole });
-      
-      // Update the local user state
-      setUser(response.data.user);
-      
-      // Show success message
-      setSnackbar({
-        open: true,
-        message: `User role updated to ${newRole === 'user' ? 'Customer' : 'Driver'} successfully.`,
-        severity: 'success',
-      });
-      
-      return response;
-    } catch (err) {
-      console.error('Error updating user role:', err);
-      
-      // Show error message
-      setSnackbar({
-        open: true,
-        message: err.response?.data?.message || 'Failed to update user role. Please try again.',
-        severity: 'error',
-      });
-      
-      throw err;
     }
   };
 
@@ -217,9 +200,9 @@ const UserDetailsModal = ({ open, userId, onClose }) => {
       >
         <DialogTitle id="user-details-title" sx={{ m: 0, p: 2 }}>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <PersonIcon sx={{ mr: 1 }} />
+            {React.createElement(getUserTypeInfo().icon, { sx: { mr: 1 } })}
             <Typography variant="h6" component="span">
-              User Details
+              {getUserTypeInfo().title}
             </Typography>
           </Box>
           <IconButton
@@ -244,7 +227,6 @@ const UserDetailsModal = ({ open, userId, onClose }) => {
             onToggleStatus={handleToggleStatus}
             onViewShipments={handleViewShipments}
             onDelete={handleOpenDeleteDialog}
-            onUpdateRole={handleUpdateRole}
           />
         </DialogContent>
         
@@ -272,7 +254,7 @@ const UserDetailsModal = ({ open, userId, onClose }) => {
       {/* Delete Confirmation Dialog */}
       <DeleteConfirmationDialog
         open={deleteDialogOpen}
-        entityName="User"
+        entityName={user ? (user.role === 'driver' ? 'Driver' : user.role === 'admin' ? 'Admin' : 'User') : 'User'}
         confirmationText={user ? `Are you sure you want to delete ${user.firstName} ${user.lastName}? This action cannot be undone.` : ''}
         onCancel={handleCancelDelete}
         onConfirm={handleConfirmDelete}

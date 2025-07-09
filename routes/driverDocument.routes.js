@@ -18,7 +18,7 @@ const uploadHandler = (req, res, next) => {
 };
 
 // Driver Document Routes
-router.post('/driver/documents/upload', 
+router.post('/driver-documents/upload', 
   protect,
   uploadHandler,
   ...driverDocumentValidation.uploadDocuments,
@@ -27,20 +27,20 @@ router.post('/driver/documents/upload',
 );
 
 // Get current authenticated driver's documents (more secure)
-router.get('/driver/documents/my',
+router.get('/driver-documents/my',
   protect,
   driverDocumentController.getMyDocuments
 );
 
 // Get driver documents by ID (admin or specific driver access)
-router.get('/driver/documents/:driverId',
+router.get('/driver-documents/:driverId',
   protect,
   ...driverDocumentValidation.getDriverDocuments,
   validate,
   driverDocumentController.getDriverDocuments
 );
 
-router.post('/driver/documents/:driverId/withdraw',
+router.post('/driver-documents/:driverId/withdraw',
   protect,
   ...driverDocumentValidation.withdrawDocument,
   validate,

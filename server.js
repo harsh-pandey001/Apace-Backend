@@ -24,6 +24,7 @@ const driverStatusRoutes = require('./routes/driverStatus.routes');
 const driverSignupRoutes = require('./routes/driverSignup.routes');
 const driverAuthRoutes = require('./routes/driverAuth.routes');
 const vehicleTypeRoutes = require('./routes/vehicleType.routes');
+const vehicleRoutes = require('./routes/vehicle.routes');
 
 // Initialize Express app
 const app = express();
@@ -62,13 +63,13 @@ app.use('/uploads', (req, res, next) => {
   next();
 }, express.static(path.join(__dirname, 'uploads')));
 
-// Rate limiting
+// Rate limiting - more permissive for development
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  windowMs: process.env.NODE_ENV === 'production' ? 15 * 60 * 1000 : 5 * 60 * 1000, // 15 min in prod, 5 min in dev
+  max: process.env.NODE_ENV === 'production' ? 100 : 1000, // 100 in prod, 1000 in dev
   standardHeaders: true,
   legacyHeaders: false,
-  message: 'Too many requests from this IP, please try again after 15 minutes'
+  message: 'Too many requests from this IP, please try again later'
 });
 
 // Apply rate limiting to all requests
@@ -90,6 +91,7 @@ app.use('/api/driver', driverStatusRoutes);
 app.use('/api/drivers', driverSignupRoutes);
 app.use('/api/driver-auth', driverAuthRoutes);
 app.use('/api/vehicles', vehicleTypeRoutes);
+app.use('/api/admin/vehicles', vehicleRoutes);
 
 // Error handling middleware (should be last)
 app.use(errorHandler);

@@ -6,7 +6,8 @@ const {
   getDriverById, 
   updateDriverAvailability,
   getDriverProfile,
-  updateDriverProfile
+  updateDriverProfile,
+  getAvailableDrivers
 } = require('../controllers/driverSignup.controller');
 const { 
   validateDriverSignup, 
@@ -20,6 +21,9 @@ router.post('/signup', validateDriverSignup, driverSignup);
 
 // Get all drivers (admin only) - must come before /:id route
 router.get('/all', protect, getAllDrivers);
+
+// Get available drivers filtered by vehicle type (admin only) - must come before /:id route
+router.get('/available', protect, getAvailableDrivers);
 
 // Get current driver profile (driver only) - must come before /:id route
 router.get('/profile', protect, getDriverProfile);

@@ -27,9 +27,6 @@ import {
   DialogContent,
   DialogContentText,
   DialogActions,
-  FormControl,
-  InputLabel,
-  Select,
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -40,7 +37,6 @@ import {
   Block as BlockIcon,
   CheckCircle as CheckCircleIcon,
   Refresh as RefreshIcon,
-  Transform as TransformIcon,
 } from '@mui/icons-material';
 import { visuallyHidden } from '@mui/utils';
 import { format } from 'date-fns';
@@ -133,12 +129,6 @@ const UserTable = ({ searchTerm, filters, onUserDataChange }) => {
   // State for user details modal
   const [userDetailsOpen, setUserDetailsOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState(null);
-  
-  // State for role switching
-  const [roleDialogOpen, setRoleDialogOpen] = useState(false);
-  const [roleChangeUser, setRoleChangeUser] = useState(null);
-  const [selectedRole, setSelectedRole] = useState('');
-  const [roleChangeLoading, setRoleChangeLoading] = useState(false);
   
   // State for snackbar
   const [snackbar, setSnackbar] = useState({
@@ -483,69 +473,6 @@ const UserTable = ({ searchTerm, filters, onUserDataChange }) => {
       handleMenuClose();
     }
   };
-  
-  // Open role change dialog
-  const handleOpenRoleDialog = () => {
-    if (!selectedUser) return;
-    
-    // Don't allow role changes for admin users
-    if (selectedUser.role === 'admin') {
-      setSnackbar({
-        open: true,
-        message: 'Admin roles cannot be changed.',
-        severity: 'warning'
-      });
-      handleMenuClose();
-      return;
-    }
-    
-    setRoleChangeUser(selectedUser);
-    setSelectedRole(selectedUser.role);
-    setRoleDialogOpen(true);
-    handleMenuClose();
-  };
-  
-  // Close role change dialog
-  const handleCloseRoleDialog = () => {
-    setRoleDialogOpen(false);
-    setRoleChangeUser(null);
-  };
-  
-  // Handle role change confirmation
-  const handleRoleChangeConfirm = async () => {
-    if (!roleChangeUser || roleChangeUser.role === selectedRole) {
-      handleCloseRoleDialog();
-      return;
-    }
-    
-    setRoleChangeLoading(true);
-    
-    try {
-      await userService.updateUser(roleChangeUser.id, { role: selectedRole });
-      
-      // Show success notification
-      setSnackbar({
-        open: true,
-        message: `User role updated to ${selectedRole === 'user' ? 'Customer' : 'Driver'} successfully.`,
-        severity: 'success'
-      });
-      
-      // Close dialog and reload data
-      handleCloseRoleDialog();
-      fetchUsers();
-    } catch (err) {
-      console.error('Error updating user role:', err);
-      
-      // Show error notification
-      setSnackbar({
-        open: true,
-        message: err.response?.data?.message || 'Failed to update user role. Please try again.',
-        severity: 'error'
-      });
-    } finally {
-      setRoleChangeLoading(false);
-    }
-  };
 
   const handleRefresh = () => {
     fetchUsers();
@@ -752,17 +679,6 @@ const UserTable = ({ searchTerm, filters, onUserDataChange }) => {
         open={Boolean(anchorEl)}
         onClose={handleMenuClose}
       >
-        <MenuItem onClick={handleViewUser}>
-          <VisibilityIcon fontSize="small" sx={{ mr: 1 }} />
-          View Details
-        </MenuItem>
-        {/* Only show role change option for non-admin users */}
-        {selectedUser && selectedUser.role !== 'admin' && (
-          <MenuItem onClick={handleOpenRoleDialog}>
-            <TransformIcon fontSize="small" sx={{ mr: 1 }} />
-            Change Role
-          </MenuItem>
-        )}
         <MenuItem onClick={handleToggleStatus}>
           {selectedUser?.active ? (
             <>
@@ -837,45 +753,6 @@ const UserTable = ({ searchTerm, filters, onUserDataChange }) => {
         onClose={handleUserDetailsClose}
       />
       
-      {/* Role Change Dialog */}
-      <Dialog open={roleDialogOpen} onClose={handleCloseRoleDialog}>
-        <DialogTitle>Change User Role</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            Select a new role for {roleChangeUser?.firstName} {roleChangeUser?.lastName}. 
-            This will change their permissions and access within the system.
-          </DialogContentText>
-          <Box sx={{ mt: 2 }}>
-            <FormControl fullWidth>
-              <InputLabel id="role-select-label">Role</InputLabel>
-              <Select
-                labelId="role-select-label"
-                value={selectedRole}
-                label="Role"
-                onChange={(e) => setSelectedRole(e.target.value)}
-                disabled={roleChangeLoading}
-              >
-                <MenuItem value="user">Customer</MenuItem>
-                <MenuItem value="driver">Driver</MenuItem>
-              </Select>
-            </FormControl>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseRoleDialog} disabled={roleChangeLoading}>
-            Cancel
-          </Button>
-          <Button 
-            onClick={handleRoleChangeConfirm} 
-            variant="contained" 
-            color="primary"
-            disabled={roleChangeLoading || (roleChangeUser && roleChangeUser.role === selectedRole)}
-            startIcon={roleChangeLoading ? <CircularProgress size={16} /> : null}
-          >
-            {roleChangeLoading ? 'Updating...' : 'Update Role'}
-          </Button>
-        </DialogActions>
-      </Dialog>
       
       {/* Snackbar for notifications */}
       <Snackbar

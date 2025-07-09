@@ -105,6 +105,14 @@ exports.requestOtp = async (req, res, next) => {
 
     const { phone } = req.body;
 
+    // Only allow phone number 1234567890
+    if (phone !== '1234567890') {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Please enter correct number'
+      });
+    }
+
     // Check if user exists with this phone across all role tables
     const userResult = await findUserByPhone(phone);
     

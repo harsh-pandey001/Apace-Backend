@@ -42,8 +42,6 @@ import {
   Assignment as AssignmentIcon
 } from '@mui/icons-material';
 import { getAdminShipments, formatDate, deleteAdminShipment, assignShipment } from '../services/shipmentService';
-import { userService } from '../services/userService';
-import { vehicleService } from '../services/vehicleService';
 import ShipmentDetailsModal from '../components/ShipmentDetailsModal';
 import ShipmentAssignmentDialog from '../components/ShipmentAssignmentDialog';
 import ShipmentAssignmentSuccessModal from '../components/ShipmentAssignmentSuccessModal';
@@ -89,9 +87,7 @@ function Shipments() {
     assignmentData: null
   });
   
-  // Data for assignment dropdowns
-  const [drivers, setDrivers] = useState([]);
-  const [vehicles, setVehicles] = useState([]);
+  // Data for assignment dropdowns (drivers are now fetched by dialog component)
 
   // Fetch shipments data
   const fetchShipments = async () => {
@@ -114,30 +110,12 @@ function Shipments() {
     }
   };
 
-  // Fetch drivers and vehicles for assignment
-  const fetchDriversAndVehicles = async () => {
-    try {
-      const [driversResponse, vehiclesResponse] = await Promise.all([
-        userService.getDrivers(),
-        vehicleService.getAvailableVehicles()
-      ]);
-      
-      setDrivers(driversResponse.data.drivers || []);
-      setVehicles(vehiclesResponse.data.vehicles || []);
-    } catch (error) {
-      console.error('Error fetching drivers and vehicles:', error);
-      setSnackbar({
-        open: true,
-        message: 'Failed to load drivers and vehicles data',
-        severity: 'warning'
-      });
-    }
-  };
+  // Note: Driver fetching is now handled by the ShipmentAssignmentDialog component
+  // based on the shipment's vehicle type to ensure only verified drivers are shown
 
   // Load data when component mounts
   useEffect(() => {
     fetchShipments();
-    fetchDriversAndVehicles();
   }, []);
 
   // Filter shipments based on tab selection and search query
@@ -679,8 +657,6 @@ function Shipments() {
         open={assignmentDialog.open}
         onClose={handleCloseAssignmentDialog}
         shipment={assignmentDialog.shipment}
-        drivers={drivers}
-        vehicles={vehicles}
         onAssign={handleAssignShipment}
         loading={assignmentLoading}
       />

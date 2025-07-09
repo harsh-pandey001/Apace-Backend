@@ -1,6 +1,6 @@
 const { validationResult } = require('express-validator');
 const { Op } = require('sequelize');
-const { Shipment, User, Vehicle } = require('../models');
+const { Shipment, User, Vehicle, Driver, DriverDocument } = require('../models');
 const { AppError } = require('../middleware/errorHandler');
 const { logger } = require('../utils/logger');
 
@@ -541,7 +541,7 @@ exports.deleteShipment = async (req, res, next) => {
   }
 };
 
-// Assign a shipment to a vehicle/driver (admin)
+// Assign a shipment to a driver (admin)
 exports.assignShipment = async (req, res, next) => {
   try {
     // Check for validation errors
@@ -553,29 +553,33 @@ exports.assignShipment = async (req, res, next) => {
       });
     }
 
-    const { vehicleId, driverId } = req.body;
+    const { driverId } = req.body;
 
-    // Verify vehicle exists
-    const vehicle = await Vehicle.findByPk(vehicleId);
-    if (!vehicle) {
-      return next(new AppError('Vehicle not found', 404));
+    if (!driverId) {
+      return next(new AppError('Driver ID is required', 400));
     }
 
-    // If driver ID is provided, verify driver exists and is a driver
-    if (driverId) {
-      const driver = await User.findOne({
-        where: {
-          id: driverId,
-          role: 'driver'
+    // Find the driver and verify they have verified documents
+    const driver = await Driver.findByPk(driverId, {
+      include: [
+        {
+          model: DriverDocument,
+          as: 'documents',
+          where: {
+            status: 'verified'
+          },
+          required: true
         }
-      });
+      ]
+    });
 
-      if (!driver) {
-        return next(new AppError('Driver not found or user is not a driver', 404));
-      }
+    if (!driver) {
+      return next(new AppError('Driver not found or documents not verified', 404));
+    }
 
-      // Update vehicle with driver
-      await vehicle.update({ driverId });
+    // Check if driver is active and available
+    if (!driver.isActive) {
+      return next(new AppError('Driver is not active', 400));
     }
 
     // Find shipment
@@ -585,12 +589,62 @@ exports.assignShipment = async (req, res, next) => {
       return next(new AppError('Shipment not found', 404));
     }
 
-    // Assign vehicle to shipment
-    await shipment.update({ vehicleId });
-    
-    logger.info(`Admin assigned shipment ${shipment.trackingNumber} to vehicle ${vehicle.vehicleNumber}`);
+    // Verify driver's vehicle type matches shipment's vehicle type (case-insensitive)
+    if (driver.vehicleType.toLowerCase() !== shipment.vehicleType.toLowerCase()) {
+      return next(new AppError(`Driver's vehicle type (${driver.vehicleType}) does not match shipment's vehicle type (${shipment.vehicleType})`, 400));
+    }
 
-    // Get updated shipment with vehicle info
+    // Create or find a vehicle record for this driver (if not exists)
+    let vehicle = await Vehicle.findOne({
+      where: {
+        driverId: driver.id,
+        vehicleNumber: driver.vehicleNumber
+      }
+    });
+
+    if (!vehicle) {
+      // Map driver vehicle types to vehicle model types
+      const vehicleTypeMapping = {
+        'bike': 'motorcycle',
+        'motorcycle': 'motorcycle',
+        'car': 'car',
+        'van': 'van',
+        'truck': 'truck',
+        'mini_truck': 'truck'
+      };
+      
+      const mappedVehicleType = vehicleTypeMapping[driver.vehicleType.toLowerCase()] || 'car';
+      
+      // Parse capacity and weight from driver data, with defaults
+      let capacity = null;
+      let maxWeight = null;
+      
+      if (driver.vehicleCapacity && !isNaN(parseFloat(driver.vehicleCapacity))) {
+        capacity = parseFloat(driver.vehicleCapacity);
+        maxWeight = parseFloat(driver.vehicleCapacity);
+      }
+      
+      // Create vehicle record from driver information
+      vehicle = await Vehicle.create({
+        vehicleNumber: driver.vehicleNumber,
+        type: mappedVehicleType,
+        model: driver.vehicleType, // Use original vehicle type as model
+        licensePlate: driver.vehicleNumber, // Use vehicle number as license plate for now
+        capacity: capacity,
+        maxWeight: maxWeight,
+        driverId: driver.id,
+        status: 'available'
+      });
+    }
+
+    // Assign vehicle to shipment (keep status as pending until pickup starts)
+    await shipment.update({ 
+      vehicleId: vehicle.id
+    });
+    
+    logger.info(`Admin assigned shipment ${shipment.trackingNumber} to driver ${driver.name} (${driver.vehicleNumber})`);
+
+    // Get updated shipment with driver and vehicle info
     const updatedShipment = await Shipment.findByPk(req.params.id, {
       include: [
         {
@@ -598,9 +652,9 @@ exports.assignShipment = async (req, res, next) => {
           as: 'vehicle',
           include: [
             {
-              model: User,
-              as: 'driver',
-              attributes: ['id', 'firstName', 'lastName', 'email', 'phone']
+              model: Driver,
+              as: 'driverOwner',
+              attributes: ['id', 'name', 'email', 'phone', 'vehicleType', 'vehicleNumber', 'vehicleCapacity']
             }
           ]
         }
@@ -609,8 +663,18 @@ exports.assignShipment = async (req, res, next) => {
 
     res.status(200).json({
       status: 'success',
+      message: `Shipment assigned to driver ${driver.name}`,
       data: {
-        shipment: updatedShipment
+        shipment: updatedShipment,
+        assignedDriver: {
+          id: driver.id,
+          name: driver.name,
+          email: driver.email,
+          phone: driver.phone,
+          vehicleType: driver.vehicleType,
+          vehicleNumber: driver.vehicleNumber,
+          vehicleCapacity: driver.vehicleCapacity
+        }
       }
     });
   } catch (error) {

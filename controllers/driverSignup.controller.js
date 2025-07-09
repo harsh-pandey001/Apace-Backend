@@ -1,6 +1,6 @@
 const { validationResult } = require('express-validator');
 const { Op } = require('sequelize');
-const { Driver, OtpVerification, VehicleType } = require('../models');
+const { Driver, OtpVerification, VehicleType, DriverDocument, sequelize } = require('../models');
 const { AppError } = require('../middleware/errorHandler');
 const { logger } = require('../utils/logger');
 const { 
@@ -343,6 +343,93 @@ exports.updateDriverProfile = async (req, res, next) => {
   } catch (error) {
     logger.error(`Driver profile update failed: ${error.message}`, {
       driverId: req.user?.id,
+      error: error.message
+    });
+    next(error);
+  }
+};
+
+// Get available drivers filtered by vehicle type with verified documents
+exports.getAvailableDrivers = async (req, res, next) => {
+  try {
+    const { vehicleType } = req.query;
+    
+    if (!vehicleType) {
+      return next(new AppError('Vehicle type parameter is required', 400));
+    }
+
+    // Query drivers with verified documents and matching vehicle type (case-insensitive)
+    const drivers = await Driver.findAll({
+      where: {
+        [Op.and]: [
+          sequelize.where(
+            sequelize.fn('LOWER', sequelize.col('vehicleType')),
+            sequelize.fn('LOWER', vehicleType)
+          ),
+          { isActive: true },
+          { availability_status: 'online' }
+        ]
+      },
+      include: [
+        {
+          model: DriverDocument,
+          as: 'documents',
+          where: {
+            status: 'verified'
+          },
+          required: true // Only include drivers with verified documents
+        }
+      ],
+      attributes: [
+        'id',
+        'name',
+        'email',
+        'phone',
+        'vehicleType',
+        'vehicleCapacity',
+        'vehicleNumber',
+        'availability_status',
+        'isActive',
+        'isVerified',
+        'createdAt'
+      ]
+    });
+
+    if (drivers.length === 0) {
+      return res.status(200).json({
+        status: 'success',
+        message: `No verified drivers available for vehicle type: ${vehicleType}`,
+        results: 0,
+        data: {
+          drivers: []
+        }
+      });
+    }
+
+    res.status(200).json({
+      status: 'success',
+      message: `Found ${drivers.length} verified drivers for vehicle type: ${vehicleType}`,
+      results: drivers.length,
+      data: {
+        drivers: drivers.map(driver => ({
+          id: driver.id,
+          name: driver.name,
+          email: driver.email,
+          phone: driver.phone,
+          vehicleType: driver.vehicleType,
+          vehicleCapacity: driver.vehicleCapacity,
+          vehicleNumber: driver.vehicleNumber,
+          availability_status: driver.availability_status,
+          isActive: driver.isActive,
+          isVerified: driver.isVerified,
+          documentsStatus: 'verified',
+          createdAt: driver.createdAt
+        }))
+      }
+    });
+  } catch (error) {
+    logger.error(`Error fetching available drivers: ${error.message}`, {
+      vehicleType: req.query.vehicleType,
       error: error.message
     });
     next(error);

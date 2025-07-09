@@ -67,15 +67,27 @@ router.get('/my-shipments/:id', shipmentController.getUserShipment);
 // Track a shipment by tracking number (no auth required)
 router.get('/track/:trackingNumber', shipmentController.trackShipment);
 
+// Admin routes
+router.get('/admin', restrictTo('admin'), shipmentController.getAllShipments);
+router.get('/admin/:id', restrictTo('admin'), shipmentController.getShipment);
+router.patch('/admin/:id', restrictTo('admin'), shipmentController.updateShipment);
+router.delete('/admin/:id', restrictTo('admin'), shipmentController.deleteShipment);
+router.patch(
+  '/admin/assign/:id',
+  restrictTo('admin'),
+  [
+    body('driverId').isUUID().withMessage('Valid driver ID is required'),
+    body('estimatedDeliveryDate').optional().isISO8601().withMessage('Estimated delivery date must be a valid date'),
+    body('notes').optional().isString().withMessage('Notes must be a string')
+  ],
+  shipmentController.assignShipment
+);
+
 // Driver routes
-router.use('/driver', restrictTo('driver', 'admin'));
-
-// Get all shipments assigned to driver
-router.get('/driver/assigned', shipmentController.getDriverShipments);
-
-// Update shipment status (for driver)
+router.get('/driver/assigned', restrictTo('driver', 'admin'), shipmentController.getDriverShipments);
 router.patch(
   '/driver/update-status/:id',
+  restrictTo('driver', 'admin'),
   [
     body('status')
       .isIn(['pending', 'in_transit', 'out_for_delivery', 'delivered', 'failed'])
@@ -83,31 +95,6 @@ router.patch(
     body('notes').optional().isString()
   ],
   shipmentController.updateShipmentStatus
-);
-
-// Admin routes
-router.use('/admin', restrictTo('admin'));
-
-// Get all shipments (admin)
-router.get('/admin', shipmentController.getAllShipments);
-
-// Get a specific shipment (admin)
-router.get('/admin/:id', shipmentController.getShipment);
-
-// Update a shipment (admin)
-router.patch('/admin/:id', shipmentController.updateShipment);
-
-// Delete a shipment (admin)
-router.delete('/admin/:id', shipmentController.deleteShipment);
-
-// Assign a shipment to a vehicle/driver (admin)
-router.patch(
-  '/admin/assign/:id',
-  [
-    body('vehicleId').isUUID().withMessage('Valid vehicle ID is required'),
-    body('driverId').optional().isUUID().withMessage('Driver ID must be a valid UUID')
-  ],
-  shipmentController.assignShipment
 );
 
 module.exports = router;

@@ -83,17 +83,8 @@ const VehiclePricing = () => {
     startingPrice: ''
   });
 
-  // Icon options for dropdown
-  const iconOptions = [
-    { label: 'Truck', value: 'truck' },
-    { label: 'Bike', value: 'bike' },
-    { label: 'Car', value: 'car' },
-    { label: 'Van', value: 'van' },
-    { label: 'Bus', value: 'bus' },
-    { label: 'Tractor', value: 'tractor' },
-    { label: 'Container', value: 'container' },
-    { label: 'Default', value: 'default' }
-  ];
+  // Icon options for dropdown (fetched dynamically)
+  const [iconOptions, setIconOptions] = useState([]);
 
   // Validation functions
   const validateCapacity = (value) => {
@@ -168,9 +159,31 @@ const VehiclePricing = () => {
     }
   }, []);
 
+  // Fetch available icon options
+  const fetchIconOptions = useCallback(async () => {
+    try {
+      const response = await vehicleService.getAvailableIconKeys();
+      setIconOptions(response.data || []);
+    } catch (err) {
+      console.error('Error fetching icon options:', err);
+      // Fallback to default options if API fails
+      setIconOptions([
+        { label: 'Truck', value: 'truck' },
+        { label: 'Bike', value: 'bike' },
+        { label: 'Car', value: 'car' },
+        { label: 'Van', value: 'van' },
+        { label: 'Bus', value: 'bus' },
+        { label: 'Tractor', value: 'tractor' },
+        { label: 'Container', value: 'container' },
+        { label: 'Default', value: 'default' }
+      ]);
+    }
+  }, []);
+
   useEffect(() => {
     fetchVehicleTypes();
-  }, [fetchVehicleTypes]);
+    fetchIconOptions();
+  }, [fetchVehicleTypes, fetchIconOptions]);
 
   // Handle edit mode
   const handleEdit = (vehicle) => {

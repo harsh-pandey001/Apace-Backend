@@ -36,6 +36,12 @@ import {
   CheckCircle as CheckCircleIcon,
   Delete as DeleteIcon,
   Refresh as RefreshIcon,
+  LocalShipping as VehicleIcon,
+  DirectionsCar as CarIcon,
+  Verified as VerifiedIcon,
+  Pending as PendingIcon,
+  RadioButtonUnchecked as OfflineIcon,
+  RadioButtonChecked as OnlineIcon,
 } from '@mui/icons-material';
 import { format } from 'date-fns';
 
@@ -49,14 +55,8 @@ const UserDetailsCard = ({
   onEdit, 
   onToggleStatus, 
   onViewShipments,
-  onDelete,
-  onUpdateRole
+  onDelete
 }) => {
-  // State for role switching
-  const [roleChangeOpen, setRoleChangeOpen] = useState(false);
-  const [selectedRole, setSelectedRole] = useState('');
-  const [roleChangeLoading, setRoleChangeLoading] = useState(false);
-
   // Format the date to a readable string
   const formatDate = (dateString) => {
     if (!dateString) return 'Not available';
@@ -93,36 +93,6 @@ const UserDetailsCard = ({
     return active ? 'success' : 'error';
   };
   
-  // Handle opening the role change dialog
-  const handleRoleChangeOpen = () => {
-    setSelectedRole(user.role);
-    setRoleChangeOpen(true);
-  };
-  
-  // Handle closing the role change dialog
-  const handleRoleChangeClose = () => {
-    setRoleChangeOpen(false);
-  };
-  
-  // Handle role change confirmation
-  const handleRoleChangeConfirm = async () => {
-    if (!user || !onUpdateRole || user.role === selectedRole) {
-      handleRoleChangeClose();
-      return;
-    }
-    
-    setRoleChangeLoading(true);
-    
-    try {
-      await onUpdateRole(user.id, selectedRole);
-      handleRoleChangeClose();
-    } catch (error) {
-      console.error('Error changing role:', error);
-    } finally {
-      setRoleChangeLoading(false);
-    }
-  };
-
   // Show skeletons while loading
   if (loading) {
     return (
@@ -233,96 +203,184 @@ const UserDetailsCard = ({
         <Grid container spacing={3}>
           {/* User ID */}
           <Grid item xs={12}>
-            <Typography variant="subtitle2" color="text.secondary">
-              User ID
-            </Typography>
-            <Typography variant="body1" sx={{ wordBreak: 'break-all' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+              <PersonIcon color="primary" />
+              <Typography variant="subtitle2" color="text.secondary">
+                User ID
+              </Typography>
+            </Box>
+            <Typography variant="body1" sx={{ wordBreak: 'break-all', mt: 1, fontWeight: 'medium' }}>
               {user.id}
             </Typography>
           </Grid>
           
           {/* Email */}
           <Grid item xs={12} sm={6}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
               <EmailIcon color="primary" />
               <Typography variant="subtitle2" color="text.secondary">
                 Email
               </Typography>
             </Box>
-            <Typography variant="body1" sx={{ wordBreak: 'break-all' }}>
+            <Typography variant="body1" sx={{ wordBreak: 'break-all', mt: 1, fontWeight: 'medium' }}>
               {user.email}
             </Typography>
           </Grid>
           
           {/* Phone */}
           <Grid item xs={12} sm={6}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
               <PhoneIcon color="primary" />
               <Typography variant="subtitle2" color="text.secondary">
                 Phone
               </Typography>
             </Box>
-            <Typography variant="body1">
+            <Typography variant="body1" sx={{ mt: 1, fontWeight: 'medium' }}>
               {user.phone}
             </Typography>
           </Grid>
           
           {/* Created At */}
           <Grid item xs={12} sm={6}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
               <EventIcon color="primary" />
               <Typography variant="subtitle2" color="text.secondary">
                 Account Created
               </Typography>
             </Box>
-            <Typography variant="body1">
+            <Typography variant="body1" sx={{ mt: 1, fontWeight: 'medium' }}>
               {formatDate(user.createdAt)}
             </Typography>
           </Grid>
           
           {/* Updated At */}
           <Grid item xs={12} sm={6}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
               <EventIcon color="primary" />
               <Typography variant="subtitle2" color="text.secondary">
                 Last Updated
               </Typography>
             </Box>
-            <Typography variant="body1">
+            <Typography variant="body1" sx={{ mt: 1, fontWeight: 'medium' }}>
               {formatDate(user.updatedAt)}
             </Typography>
           </Grid>
+
+          {/* Driver-Specific Information */}
+          {user.role === 'driver' && (
+            <>
+              <Grid item xs={12}>
+                <Divider sx={{ my: 3 }}>
+                  <Chip label="Driver Information" color="primary" variant="outlined" />
+                </Divider>
+              </Grid>
+
+              {/* Driver Verification Status */}
+              <Grid item xs={12} sm={6}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                  <VerifiedIcon color={user.isVerified ? 'success' : 'warning'} />
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Verification Status
+                  </Typography>
+                </Box>
+                <Box sx={{ mt: 1 }}>
+                  <Chip
+                    label={user.isVerified ? '🟢 Verified' : '🟡 Pending Verification'}
+                    color={user.isVerified ? 'success' : 'warning'}
+                    size="small"
+                    icon={user.isVerified ? <VerifiedIcon /> : <PendingIcon />}
+                    sx={{ fontWeight: 'medium' }}
+                  />
+                </Box>
+              </Grid>
+
+              {/* Driver Availability Status */}
+              <Grid item xs={12} sm={6}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                  {user.availability_status === 'online' ? 
+                    <OnlineIcon color="success" /> : 
+                    <OfflineIcon color="error" />
+                  }
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Availability Status
+                  </Typography>
+                </Box>
+                <Box sx={{ mt: 1 }}>
+                  <Chip
+                    label={user.availability_status === 'online' ? '🟢 Online' : '🔴 Offline'}
+                    color={user.availability_status === 'online' ? 'success' : 'error'}
+                    size="small"
+                    icon={user.availability_status === 'online' ? <OnlineIcon /> : <OfflineIcon />}
+                    sx={{ fontWeight: 'medium' }}
+                  />
+                </Box>
+              </Grid>
+
+              {/* Vehicle Information Section */}
+              {user.vehicleInfo && (
+                <>
+                  <Grid item xs={12}>
+                    <Divider sx={{ my: 3 }}>
+                      <Chip label="Vehicle Information" color="secondary" variant="outlined" />
+                    </Divider>
+                  </Grid>
+
+                  {/* Vehicle Type */}
+                  <Grid item xs={12} sm={6}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                      <VehicleIcon color="primary" />
+                      <Typography variant="subtitle2" color="text.secondary">
+                        Vehicle Type
+                      </Typography>
+                    </Box>
+                    <Typography variant="body1" sx={{ textTransform: 'capitalize', mt: 1, fontWeight: 'medium' }}>
+                      {user.vehicleInfo.vehicleType || 'Not specified'}
+                    </Typography>
+                  </Grid>
+
+                  {/* Vehicle Capacity */}
+                  <Grid item xs={12} sm={6}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                      <CarIcon color="primary" />
+                      <Typography variant="subtitle2" color="text.secondary">
+                        Vehicle Capacity
+                      </Typography>
+                    </Box>
+                    <Typography variant="body1" sx={{ mt: 1, fontWeight: 'medium' }}>
+                      {user.vehicleInfo.vehicleCapacity || 'Not specified'}
+                    </Typography>
+                  </Grid>
+
+                  {/* Vehicle Number */}
+                  <Grid item xs={12} sm={6}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                      <CarIcon color="primary" />
+                      <Typography variant="subtitle2" color="text.secondary">
+                        Vehicle Number
+                      </Typography>
+                    </Box>
+                    <Typography variant="body1" sx={{ mt: 1, fontWeight: 'medium' }}>
+                      {user.vehicleInfo.vehicleNumber || 'Not specified'}
+                    </Typography>
+                  </Grid>
+
+                </>
+              )}
+            </>
+          )}
         </Grid>
         
         {/* Action Buttons */}
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 4 }}>
-          {/* Role Switching (only for non-admin users) */}
-          {user.role !== 'admin' && onUpdateRole && (
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                User Role
-              </Typography>
-              <Button 
-                variant="outlined" 
-                color="primary"
-                onClick={handleRoleChangeOpen}
-                fullWidth
-                startIcon={<RefreshIcon />}
-              >
-                Change Role: {user.role === 'user' ? 'Customer' : 'Driver'}
-              </Button>
-            </Box>
-          )}
-          
           {/* Primary Actions */}
-          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+          <Box sx={{ display: 'flex', gap: 2 }}>
             {onToggleStatus && (
               <Button
                 variant="outlined"
                 color={user.active ? "error" : "success"}
                 startIcon={user.active ? <BlockIcon /> : <CheckCircleIcon />}
                 onClick={onToggleStatus}
-                sx={{ flexGrow: 1, mr: 1 }}
+                sx={{ flexGrow: 1 }}
               >
                 {user.active ? 'Disable Account' : 'Enable Account'}
               </Button>
@@ -334,7 +392,7 @@ const UserDetailsCard = ({
                 color="primary"
                 startIcon={<ShipmentsIcon />}
                 onClick={onViewShipments}
-                sx={{ flexGrow: 1, ml: onToggleStatus ? 1 : 0 }}
+                sx={{ flexGrow: 1 }}
               >
                 View Shipments
               </Button>
@@ -354,46 +412,6 @@ const UserDetailsCard = ({
             </Button>
           )}
         </Box>
-        
-        {/* Role Change Dialog */}
-        <Dialog open={roleChangeOpen} onClose={handleRoleChangeClose}>
-          <DialogTitle>Change User Role</DialogTitle>
-          <DialogContent>
-            <DialogContentText>
-              Select a new role for {user?.firstName} {user?.lastName}. 
-              This will change their permissions and access within the system.
-            </DialogContentText>
-            <Box sx={{ mt: 2 }}>
-              <FormControl fullWidth>
-                <InputLabel id="role-select-label">Role</InputLabel>
-                <Select
-                  labelId="role-select-label"
-                  value={selectedRole}
-                  label="Role"
-                  onChange={(e) => setSelectedRole(e.target.value)}
-                  disabled={roleChangeLoading}
-                >
-                  <MenuItem value="user">Customer</MenuItem>
-                  <MenuItem value="driver">Driver</MenuItem>
-                </Select>
-              </FormControl>
-            </Box>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleRoleChangeClose} disabled={roleChangeLoading}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleRoleChangeConfirm} 
-              variant="contained" 
-              color="primary"
-              disabled={roleChangeLoading || user?.role === selectedRole}
-              startIcon={roleChangeLoading ? <CircularProgress size={16} /> : null}
-            >
-              {roleChangeLoading ? 'Updating...' : 'Update Role'}
-            </Button>
-          </DialogActions>
-        </Dialog>
       </CardContent>
     </Card>
   );
@@ -417,7 +435,6 @@ UserDetailsCard.propTypes = {
   onToggleStatus: PropTypes.func,
   onViewShipments: PropTypes.func,
   onDelete: PropTypes.func,
-  onUpdateRole: PropTypes.func,
 };
 
 UserDetailsCard.defaultProps = {

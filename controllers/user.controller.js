@@ -1,5 +1,5 @@
 const { validationResult } = require('express-validator');
-const { User } = require('../models');
+const { User, Driver, Admin } = require('../models');
 const { AppError } = require('../middleware/errorHandler');
 const { logger } = require('../utils/logger');
 
@@ -117,43 +117,149 @@ exports.updateProfile = async (req, res, next) => {
 
 // Admin routes below
 
-// Get all users (admin only)
+// Get all users and drivers (admin only)
 exports.getAllUsers = async (req, res, next) => {
   try {
+    // Check if user is admin
+    if (req.user.role !== 'admin') {
+      return next(new AppError('You do not have permission to perform this action', 403));
+    }
+
     // Pagination
     const page = parseInt(req.query.page, 10) || 1;
-    const limit = parseInt(req.query.limit, 10) || 10;
+    const limit = parseInt(req.query.limit, 10) || 50;
     const offset = (page - 1) * limit;
 
-    // Find all users excluding password
-    const { count, rows: users } = await User.findAndCountAll({
+    // Get users
+    const users = await User.findAll({
       attributes: { exclude: ['password'] },
-      limit,
-      offset,
       order: [['createdAt', 'DESC']]
     });
 
+    // Get drivers
+    const drivers = await Driver.findAll({
+      attributes: ['id', 'name', 'email', 'phone', 'isActive', 'isVerified', 'availability_status', 'vehicleType', 'vehicleCapacity', 'vehicleNumber', 'createdAt', 'updatedAt'],
+      order: [['createdAt', 'DESC']]
+    });
+
+    // Format data to include type and combine
+    const formattedUsers = users.map(user => ({
+      ...user.toJSON(),
+      userType: 'user',
+      role: 'user'
+    }));
+
+    const formattedDrivers = drivers.map(driver => ({
+      ...driver.toJSON(),
+      userType: 'driver',
+      role: 'driver',
+      firstName: driver.name.split(' ')[0] || driver.name,
+      lastName: driver.name.split(' ').slice(1).join(' ') || '',
+      active: driver.isActive
+    }));
+
+    // Combine and sort by creation date
+    const allUsers = [...formattedUsers, ...formattedDrivers].sort((a, b) => 
+      new Date(b.createdAt) - new Date(a.createdAt)
+    );
+
+    // Apply pagination to combined results
+    const totalCount = allUsers.length;
+    const paginatedUsers = allUsers.slice(offset, offset + limit);
+
     res.status(200).json({
       status: 'success',
-      results: users.length,
-      totalUsers: count,
-      totalPages: Math.ceil(count / limit),
+      results: paginatedUsers.length,
+      totalUsers: totalCount,
+      totalPages: Math.ceil(totalCount / limit),
       currentPage: page,
       data: {
-        users
+        users: paginatedUsers,
+        summary: {
+          totalUsers: formattedUsers.length,
+          totalDrivers: formattedDrivers.length,
+          totalAll: totalCount
+        }
       }
     });
   } catch (error) {
+    logger.error('Error in getAllUsers:', error);
     next(error);
   }
 };
 
-// Get a single user (admin only)
+// Get a single user (admin only) - searches across User, Driver, and Admin tables
 exports.getUser = async (req, res, next) => {
   try {
-    const user = await User.findByPk(req.params.id, {
+    const userId = req.params.id;
+    let user = null;
+    let userType = null;
+    let userRole = null;
+
+    // Check User table first
+    user = await User.findByPk(userId, {
       attributes: { exclude: ['password'] }
     });
+    
+    if (user) {
+      userType = 'user';
+      userRole = 'user';
+      
+      // Format user data to include role
+      const userData = user.toJSON();
+      user = {
+        ...userData,
+        role: 'user',
+        userType: 'user'
+      };
+    } else {
+      // Check Driver table
+      user = await Driver.findByPk(userId, {
+        attributes: ['id', 'name', 'email', 'phone', 'isActive', 'isVerified', 'availability_status', 'vehicleType', 'vehicleCapacity', 'vehicleNumber', 'createdAt', 'updatedAt']
+      });
+      
+      if (user) {
+        userType = 'driver';
+        userRole = 'driver';
+        
+        // Format driver data to match user structure
+        const driverData = user.toJSON();
+        user = {
+          ...driverData,
+          firstName: driverData.name.split(' ')[0] || driverData.name,
+          lastName: driverData.name.split(' ').slice(1).join(' ') || '',
+          active: driverData.isActive,
+          role: 'driver',
+          userType: 'driver',
+          // Add driver-specific fields
+          vehicleInfo: {
+            vehicleType: driverData.vehicleType,
+            vehicleCapacity: driverData.vehicleCapacity,
+            vehicleNumber: driverData.vehicleNumber
+          },
+          isVerified: driverData.isVerified,
+          availability_status: driverData.availability_status
+        };
+      } else {
+        // Check Admin table
+        user = await Admin.findByPk(userId, {
+          attributes: { exclude: ['password'] }
+        });
+        
+        if (user) {
+          userType = 'admin';
+          userRole = 'admin';
+          
+          // Format admin data
+          const adminData = user.toJSON();
+          user = {
+            ...adminData,
+            role: 'admin',
+            userType: 'admin'
+          };
+        }
+      }
+    }
 
     if (!user) {
       return next(new AppError('User not found', 404));
@@ -161,6 +267,8 @@ exports.getUser = async (req, res, next) => {
 
     res.status(200).json({
       status: 'success',
+      userType,
+      role: userRole,
       data: {
         user
       }
@@ -318,20 +426,35 @@ exports.permanentDeleteUser = async (req, res, next) => {
       return next(new AppError('Invalid user ID provided', 400));
     }
 
-    const user = await User.findByPk(userId);
+    // Check in User table first
+    let user = await User.findByPk(userId);
+    let userType = 'user';
+    let userEmail = null;
+    
+    // If not found in User table, check Driver table
+    if (!user) {
+      user = await Driver.findByPk(userId);
+      userType = 'driver';
+    }
+    
+    // If still not found, check Admin table
+    if (!user) {
+      user = await Admin.findByPk(userId);
+      userType = 'admin';
+    }
     
     if (!user) {
       return next(new AppError('User not found', 404));
     }
 
     // Prevent deletion of admin users
-    if (user.role === 'admin') {
+    if (userType === 'admin') {
       return next(new AppError('Cannot permanently delete admin users', 403));
     }
 
     // Store user info for logging before deletion
-    const userEmail = user.email;
-    const userRole = user.role;
+    userEmail = user.email || user.phone;
+    const userName = user.firstName ? `${user.firstName} ${user.lastName}` : user.name;
 
     // Permanently delete the user from database
     const destroyResult = await user.destroy();
@@ -341,17 +464,18 @@ exports.permanentDeleteUser = async (req, res, next) => {
       return next(new AppError('Failed to delete user', 500));
     }
 
-    logger.info(`Admin permanently deleted user: ${userEmail} (role: ${userRole})`);
+    logger.info(`Admin permanently deleted ${userType}: ${userEmail} (${userName})`);
 
     // Return success response
     return res.status(200).json({
       status: 'success',
-      message: 'User permanently deleted successfully',
+      message: `${userType.charAt(0).toUpperCase() + userType.slice(1)} permanently deleted successfully`,
       data: {
         deletedUser: {
           id: userId,
           email: userEmail,
-          role: userRole
+          name: userName,
+          type: userType
         }
       }
     });

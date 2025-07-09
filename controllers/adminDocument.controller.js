@@ -1,4 +1,4 @@
-const { DriverDocument, User } = require('../models');
+const { DriverDocument, User, Driver } = require('../models');
 const { Op } = require('sequelize');
 
 const adminDocumentController = {
@@ -16,9 +16,9 @@ const adminDocumentController = {
       const { count, rows: documents } = await DriverDocument.findAndCountAll({
         where: whereClause,
         include: [{
-          model: User,
-          as: 'driver',
-          attributes: ['id', 'firstName', 'lastName', 'email', 'phone', 'role']
+          model: Driver,
+          as: 'driverProfile',
+          attributes: ['id', 'name', 'email', 'phone', 'isActive', 'isVerified', 'vehicleType']
         }],
         order: [['uploaded_at', 'DESC']],
         limit: parseInt(limit),
@@ -30,7 +30,7 @@ const adminDocumentController = {
       // Format response data
       const formattedDocuments = documents.map(doc => ({
         id: doc.id,
-        driver: doc.driver,
+        driver: doc.driverProfile,
         status: doc.status,
         rejection_reason: doc.rejection_reason,
         uploaded_at: doc.uploaded_at,
@@ -85,7 +85,7 @@ const adminDocumentController = {
       const { verifiedBy } = req.body;
 
       // Check if driver exists
-      const driver = await User.findByPk(driverId);
+      const driver = await Driver.findByPk(driverId);
       if (!driver) {
         return res.status(404).json({
           success: false,
@@ -155,7 +155,7 @@ const adminDocumentController = {
       }
 
       // Check if driver exists
-      const driver = await User.findByPk(driverId);
+      const driver = await Driver.findByPk(driverId);
       if (!driver) {
         return res.status(404).json({
           success: false,

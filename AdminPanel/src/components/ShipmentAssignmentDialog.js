@@ -22,6 +22,7 @@ import {
   Person as PersonIcon,
   DirectionsCar as VehicleIcon
 } from '@mui/icons-material';
+import { vehicleService } from '../services/vehicleService';
 // Removed MUI X Date Pickers due to compatibility issues
 // Using native HTML5 datetime-local input instead
 
@@ -29,8 +30,6 @@ function ShipmentAssignmentDialog({
   open, 
   onClose, 
   shipment,
-  drivers = [],
-  vehicles = [],
   onAssign,
   loading = false 
 }) {
@@ -43,24 +42,43 @@ function ShipmentAssignmentDialog({
 
   const [formData, setFormData] = useState({
     driverId: '',
-    vehicleId: '',
     estimatedDeliveryDate: formatDateTimeLocal(Date.now() + 24 * 60 * 60 * 1000), // Default to tomorrow
     notes: ''
   });
   const [errors, setErrors] = useState({});
+  const [availableDrivers, setAvailableDrivers] = useState([]);
+  const [loadingDrivers, setLoadingDrivers] = useState(false);
 
-  // Reset form when dialog opens/closes
+  // Reset form when dialog opens/closes and fetch available drivers
   useEffect(() => {
-    if (open) {
+    if (open && shipment?.vehicleType) {
       setFormData({
         driverId: '',
-        vehicleId: '',
         estimatedDeliveryDate: formatDateTimeLocal(Date.now() + 24 * 60 * 60 * 1000),
         notes: ''
       });
       setErrors({});
+      fetchAvailableDrivers(shipment.vehicleType);
     }
-  }, [open]);
+  }, [open, shipment]);
+
+  // Fetch available drivers based on vehicle type
+  const fetchAvailableDrivers = async (vehicleType) => {
+    setLoadingDrivers(true);
+    try {
+      const response = await vehicleService.getAvailableDriversByVehicleType(vehicleType);
+      setAvailableDrivers(response.data.drivers || []);
+    } catch (error) {
+      console.error('Error fetching available drivers:', error);
+      setAvailableDrivers([]);
+      setErrors(prev => ({
+        ...prev,
+        general: 'Failed to load available drivers. Please try again.'
+      }));
+    } finally {
+      setLoadingDrivers(false);
+    }
+  };
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
@@ -84,10 +102,6 @@ function ShipmentAssignmentDialog({
       newErrors.driverId = 'Please select a driver';
     }
 
-    if (!formData.vehicleId) {
-      newErrors.vehicleId = 'Please select a vehicle';
-    }
-
     if (!formData.estimatedDeliveryDate) {
       newErrors.estimatedDeliveryDate = 'Please select an estimated delivery date';
     }
@@ -101,7 +115,6 @@ function ShipmentAssignmentDialog({
 
     const assignmentData = {
       driverId: formData.driverId,
-      vehicleId: formData.vehicleId,
       estimatedDeliveryDate: new Date(formData.estimatedDeliveryDate).toISOString(),
       notes: formData.notes || undefined
     };
@@ -109,8 +122,7 @@ function ShipmentAssignmentDialog({
     onAssign(assignmentData);
   };
 
-  const selectedDriver = drivers.find(d => d.id === formData.driverId);
-  const selectedVehicle = vehicles.find(v => v.id === formData.vehicleId);
+  const selectedDriver = availableDrivers.find(d => d.id === formData.driverId);
 
   return (
       <Dialog
@@ -130,129 +142,117 @@ function ShipmentAssignmentDialog({
             <Alert severity="info" sx={{ mb: 3 }}>
               <Typography variant="body2">
                 <strong>Shipment:</strong> {shipment.trackingNumber} | 
+                <strong> Vehicle Type:</strong> {shipment.vehicleType} | 
                 <strong> From:</strong> {shipment.pickupAddress} | 
                 <strong> To:</strong> {shipment.deliveryAddress}
               </Typography>
             </Alert>
           )}
 
+          {errors.general && (
+            <Alert severity="error" sx={{ mb: 3 }}>
+              {errors.general}
+            </Alert>
+          )}
+
           <Grid container spacing={3}>
             {/* Driver Selection */}
             <Grid item xs={12} md={6}>
-              <FormControl fullWidth error={!!errors.driverId}>
-                <InputLabel>Select Driver *</InputLabel>
-                <Select
-                  value={formData.driverId}
-                  onChange={(e) => handleInputChange('driverId', e.target.value)}
-                  label="Select Driver *"
-                  startAdornment={<PersonIcon color="action" sx={{ mr: 1 }} />}
-                >
-                  {drivers.map((driver) => {
-                    const isOffline = driver.availability_status !== 'online';
-                    return (
+              {loadingDrivers ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+                  <CircularProgress size={24} />
+                  <Typography variant="body2" sx={{ ml: 2 }}>Loading available drivers...</Typography>
+                </Box>
+              ) : availableDrivers.length === 0 ? (
+                <Alert severity="warning">
+                  <Typography variant="body2">
+                    No verified drivers available for vehicle type: <strong>{shipment?.vehicleType}</strong>
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                    Only drivers with verified documents and matching vehicle type can be assigned.
+                  </Typography>
+                </Alert>
+              ) : (
+                <FormControl fullWidth error={!!errors.driverId}>
+                  <InputLabel>Select Driver *</InputLabel>
+                  <Select
+                    value={formData.driverId}
+                    onChange={(e) => handleInputChange('driverId', e.target.value)}
+                    label="Select Driver *"
+                    startAdornment={<PersonIcon color="action" sx={{ mr: 1 }} />}
+                  >
+                    {availableDrivers.map((driver) => (
                       <MenuItem 
                         key={driver.id} 
                         value={driver.id}
-                        disabled={isOffline}
                       >
                         <Box sx={{ 
                           display: 'flex', 
                           alignItems: 'center', 
                           gap: 1, 
-                          width: '100%',
-                          opacity: isOffline ? 0.5 : 1
+                          width: '100%'
                         }}>
                           <Box sx={{ flexGrow: 1 }}>
-                            <Typography variant="body1" color={isOffline ? 'text.disabled' : 'inherit'}>
-                              {driver.firstName} {driver.lastName}
-                              {isOffline && ' (Unavailable)'}
+                            <Typography variant="body1">
+                              {driver.name}
                             </Typography>
-                            <Typography variant="body2" color={isOffline ? 'text.disabled' : 'text.secondary'}>
+                            <Typography variant="body2" color="text.secondary">
                               {driver.email} • {driver.phone}
                             </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              Vehicle: {driver.vehicleNumber} ({driver.vehicleType})
+                            </Typography>
                           </Box>
-                          <Chip 
-                            label={driver.availability_status || 'offline'} 
-                            color={driver.availability_status === 'online' ? 'success' : 'default'} 
-                            size="small" 
-                          />
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                            <Chip 
+                              label={driver.availability_status} 
+                              color="success" 
+                              size="small" 
+                            />
+                            <Chip 
+                              label={driver.documentsStatus} 
+                              color="success" 
+                              size="small" 
+                            />
+                          </Box>
                         </Box>
                       </MenuItem>
-                    );
-                  })}
-                </Select>
-                {errors.driverId && (
-                  <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>
-                    {errors.driverId}
+                    ))}
+                  </Select>
+                  {errors.driverId && (
+                    <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>
+                      {errors.driverId}
+                    </Typography>
+                  )}
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                    Showing only verified drivers with {shipment?.vehicleType} vehicles
                   </Typography>
-                )}
-                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-                  Only online drivers can be assigned to shipments
-                </Typography>
-              </FormControl>
+                </FormControl>
+              )}
 
               {selectedDriver && (
                 <Box sx={{ mt: 2, p: 2, bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
-                  <Typography variant="subtitle2" gutterBottom>Selected Driver</Typography>
-                  <Typography variant="body2">{selectedDriver.firstName} {selectedDriver.lastName}</Typography>
-                  <Typography variant="body2" color="text.secondary">{selectedDriver.email}</Typography>
-                  <Typography variant="body2" color="text.secondary">{selectedDriver.phone}</Typography>
+                  <Typography variant="subtitle2" gutterBottom>Selected Driver & Vehicle</Typography>
+                  <Typography variant="body2"><strong>Driver:</strong> {selectedDriver.name}</Typography>
+                  <Typography variant="body2" color="text.secondary">{selectedDriver.email} • {selectedDriver.phone}</Typography>
+                  <Typography variant="body2"><strong>Vehicle:</strong> {selectedDriver.vehicleNumber}</Typography>
+                  <Typography variant="body2" color="text.secondary">{selectedDriver.vehicleType} • Capacity: {selectedDriver.vehicleCapacity}</Typography>
                 </Box>
               )}
             </Grid>
 
-            {/* Vehicle Selection */}
+            {/* Assignment Instructions */}
             <Grid item xs={12} md={6}>
-              <FormControl fullWidth error={!!errors.vehicleId}>
-                <InputLabel>Select Vehicle *</InputLabel>
-                <Select
-                  value={formData.vehicleId}
-                  onChange={(e) => handleInputChange('vehicleId', e.target.value)}
-                  label="Select Vehicle *"
-                  startAdornment={<VehicleIcon color="action" sx={{ mr: 1 }} />}
-                >
-                  {vehicles.map((vehicle) => (
-                    <MenuItem key={vehicle.id} value={vehicle.id}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
-                        <Box sx={{ flexGrow: 1 }}>
-                          <Typography variant="body1">
-                            {vehicle.vehicleNumber} - {vehicle.model}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            {vehicle.type} • {vehicle.licensePlate}
-                            {vehicle.capacity && ` • ${vehicle.capacity}m³`}
-                            {vehicle.maxWeight && ` • ${vehicle.maxWeight}kg`}
-                          </Typography>
-                        </Box>
-                        <Chip 
-                          label={vehicle.status || 'available'} 
-                          color={vehicle.status === 'available' ? 'success' : 'default'} 
-                          size="small" 
-                        />
-                      </Box>
-                    </MenuItem>
-                  ))}
-                </Select>
-                {errors.vehicleId && (
-                  <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>
-                    {errors.vehicleId}
-                  </Typography>
-                )}
-              </FormControl>
-
-              {selectedVehicle && (
-                <Box sx={{ mt: 2, p: 2, bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
-                  <Typography variant="subtitle2" gutterBottom>Selected Vehicle</Typography>
-                  <Typography variant="body2">{selectedVehicle.vehicleNumber} - {selectedVehicle.model}</Typography>
-                  <Typography variant="body2" color="text.secondary">{selectedVehicle.type} • {selectedVehicle.licensePlate}</Typography>
-                  {selectedVehicle.capacity && (
-                    <Typography variant="body2" color="text.secondary">Capacity: {selectedVehicle.capacity}m³</Typography>
-                  )}
-                  {selectedVehicle.maxWeight && (
-                    <Typography variant="body2" color="text.secondary">Max Weight: {selectedVehicle.maxWeight}kg</Typography>
-                  )}
-                </Box>
-              )}
+              <Alert severity="info">
+                <Typography variant="body2" gutterBottom>
+                  <strong>New Assignment Process:</strong>
+                </Typography>
+                <Typography variant="body2" component="ul" sx={{ pl: 2, m: 0 }}>
+                  <li>Select a driver → Vehicle is automatically assigned</li>
+                  <li>Only verified drivers with matching vehicle type are shown</li>
+                  <li>No manual vehicle selection needed</li>
+                </Typography>
+              </Alert>
             </Grid>
 
             {/* Estimated Delivery Date */}
@@ -299,10 +299,10 @@ function ShipmentAssignmentDialog({
           <Button
             onClick={handleSubmit}
             variant="contained"
-            disabled={loading || !formData.driverId || !formData.vehicleId}
+            disabled={loading || !formData.driverId || availableDrivers.length === 0}
             startIcon={loading ? <CircularProgress size={16} color="inherit" /> : <AssignmentIcon />}
           >
-            {loading ? 'Assigning...' : 'Assign Shipment'}
+            {loading ? 'Assigning...' : 'Assign to Driver'}
           </Button>
         </DialogActions>
       </Dialog>

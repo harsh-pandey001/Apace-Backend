@@ -4,20 +4,22 @@ const { v4: uuidv4 } = require('uuid');
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.bulkInsert('users', [{
+    // Insert admin into the new admins table
+    await queryInterface.bulkInsert('admins', [{
       id: uuidv4(),
       firstName: 'Admin',
       lastName: 'User',
       email: 'admin@apace.com',
-      phone: '+1234567890', // Add a phone number since it's required now
-      role: 'admin',
+      phone: '1234567890',
       active: true,
+      profilePicture: null,
+      permissions: null,
       createdAt: new Date(),
       updatedAt: new Date()
     }], {});
   },
 
   async down(queryInterface, Sequelize) {
-    await queryInterface.bulkDelete('users', { email: 'admin@apace.com' }, {});
+    await queryInterface.bulkDelete('admins', { email: 'admin@apace.com' }, {});
   }
 };
