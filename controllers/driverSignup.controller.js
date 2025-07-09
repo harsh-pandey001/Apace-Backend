@@ -358,14 +358,45 @@ exports.getAvailableDrivers = async (req, res, next) => {
       return next(new AppError('Vehicle type parameter is required', 400));
     }
 
-    // Query drivers with verified documents and matching vehicle type (case-insensitive)
-    const drivers = await Driver.findAll({
+    logger.info(`Fetching available drivers for vehicle type: ${vehicleType}`);
+
+    // Get vehicle type mapping to handle type vs name inconsistency
+    const vehicleTypeMapping = await VehicleType.findOne({
       where: {
-        [Op.and]: [
+        [Op.or]: [
           sequelize.where(
             sequelize.fn('LOWER', sequelize.col('vehicleType')),
             sequelize.fn('LOWER', vehicleType)
           ),
+          sequelize.where(
+            sequelize.fn('LOWER', sequelize.col('label')),
+            sequelize.fn('LOWER', vehicleType)
+          )
+        ]
+      }
+    });
+
+    let searchTerms = [vehicleType];
+    if (vehicleTypeMapping) {
+      // Add both vehicleType and label to search terms
+      searchTerms = [vehicleTypeMapping.vehicleType, vehicleTypeMapping.label];
+      logger.info(`Vehicle type mapping found: ${vehicleTypeMapping.vehicleType} <-> ${vehicleTypeMapping.label}`);
+    }
+
+    logger.info(`Searching for drivers with vehicle types: ${searchTerms.join(', ')}`);
+
+    // First, get all drivers that match basic criteria with flexible vehicle type matching
+    const allDrivers = await Driver.findAll({
+      where: {
+        [Op.and]: [
+          {
+            [Op.or]: searchTerms.map(term => 
+              sequelize.where(
+                sequelize.fn('LOWER', sequelize.col('vehicleType')),
+                sequelize.fn('LOWER', term)
+              )
+            )
+          },
           { isActive: true },
           { availability_status: 'online' }
         ]
@@ -374,10 +405,7 @@ exports.getAvailableDrivers = async (req, res, next) => {
         {
           model: DriverDocument,
           as: 'documents',
-          where: {
-            status: 'verified'
-          },
-          required: true // Only include drivers with verified documents
+          required: false // Include all drivers, we'll filter manually
         }
       ],
       attributes: [
@@ -395,7 +423,38 @@ exports.getAvailableDrivers = async (req, res, next) => {
       ]
     });
 
-    if (drivers.length === 0) {
+    logger.info(`Found ${allDrivers.length} drivers matching basic criteria (vehicle type: ${vehicleType}, active: true, online: true)`);
+
+    // Filter drivers with verified documents
+    const verifiedDrivers = allDrivers.filter(driver => {
+      let hasVerifiedDocs = false;
+      
+      if (Array.isArray(driver.documents)) {
+        hasVerifiedDocs = driver.documents.some(doc => doc.status === 'verified');
+      } else if (driver.documents && driver.documents.status === 'verified') {
+        hasVerifiedDocs = true;
+      }
+      
+      logger.debug(`Driver ${driver.id} (${driver.name}):`, {
+        vehicleType: driver.vehicleType,
+        isActive: driver.isActive,
+        availability_status: driver.availability_status,
+        isVerified: driver.isVerified,
+        documentsType: Array.isArray(driver.documents) ? 'array' : typeof driver.documents,
+        documentsCount: Array.isArray(driver.documents) ? driver.documents.length : (driver.documents ? 1 : 0),
+        hasVerifiedDocs,
+        documentStatus: Array.isArray(driver.documents) ? 
+          driver.documents.map(doc => doc.status) : 
+          (driver.documents ? driver.documents.status : 'none')
+      });
+
+      return hasVerifiedDocs;
+    });
+
+    logger.info(`Found ${verifiedDrivers.length} drivers with verified documents`);
+
+    if (verifiedDrivers.length === 0) {
+      logger.warn(`No verified drivers available for vehicle type: ${vehicleType}`);
       return res.status(200).json({
         status: 'success',
         message: `No verified drivers available for vehicle type: ${vehicleType}`,
@@ -406,31 +465,39 @@ exports.getAvailableDrivers = async (req, res, next) => {
       });
     }
 
+    const responseDrivers = verifiedDrivers.map(driver => ({
+      id: driver.id,
+      name: driver.name,
+      email: driver.email,
+      phone: driver.phone,
+      vehicleType: driver.vehicleType,
+      vehicleCapacity: driver.vehicleCapacity,
+      vehicleNumber: driver.vehicleNumber,
+      availability_status: driver.availability_status,
+      isActive: driver.isActive,
+      isVerified: driver.isVerified,
+      documentsStatus: 'verified',
+      createdAt: driver.createdAt
+    }));
+
+    logger.info(`Returning ${responseDrivers.length} verified drivers for vehicle type: ${vehicleType}`, {
+      driverIds: responseDrivers.map(d => d.id),
+      driverNames: responseDrivers.map(d => d.name)
+    });
+
     res.status(200).json({
       status: 'success',
-      message: `Found ${drivers.length} verified drivers for vehicle type: ${vehicleType}`,
-      results: drivers.length,
+      message: `Found ${verifiedDrivers.length} verified drivers for vehicle type: ${vehicleType}`,
+      results: verifiedDrivers.length,
       data: {
-        drivers: drivers.map(driver => ({
-          id: driver.id,
-          name: driver.name,
-          email: driver.email,
-          phone: driver.phone,
-          vehicleType: driver.vehicleType,
-          vehicleCapacity: driver.vehicleCapacity,
-          vehicleNumber: driver.vehicleNumber,
-          availability_status: driver.availability_status,
-          isActive: driver.isActive,
-          isVerified: driver.isVerified,
-          documentsStatus: 'verified',
-          createdAt: driver.createdAt
-        }))
+        drivers: responseDrivers
       }
     });
   } catch (error) {
     logger.error(`Error fetching available drivers: ${error.message}`, {
       vehicleType: req.query.vehicleType,
-      error: error.message
+      error: error.message,
+      stack: error.stack
     });
     next(error);
   }

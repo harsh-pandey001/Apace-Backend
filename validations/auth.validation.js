@@ -5,7 +5,7 @@ exports.requestOtpValidation = [
   body('phone')
     .notEmpty()
     .withMessage('Phone number is required')
-    .isMobilePhone()
+    .isMobilePhone('any', { strictMode: false })
     .withMessage('Please provide a valid phone number')
 ];
 
@@ -14,7 +14,7 @@ exports.verifyOtpValidation = [
   body('phone')
     .notEmpty()
     .withMessage('Phone number is required')
-    .isMobilePhone()
+    .isMobilePhone('any', { strictMode: false })
     .withMessage('Please provide a valid phone number'),
   
   body('otp')
@@ -31,7 +31,7 @@ exports.signupValidation = [
   body('phone')
     .notEmpty()
     .withMessage('Phone number is required')
-    .isMobilePhone()
+    .isMobilePhone('any', { strictMode: false })
     .withMessage('Please provide a valid phone number'),
   
   body('firstName')

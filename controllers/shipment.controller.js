@@ -1,6 +1,6 @@
 const { validationResult } = require('express-validator');
 const { Op } = require('sequelize');
-const { Shipment, User, Vehicle, Driver, DriverDocument } = require('../models');
+const { Shipment, User, Vehicle, Driver, DriverDocument, VehicleType, sequelize } = require('../models');
 const { AppError } = require('../middleware/errorHandler');
 const { logger } = require('../utils/logger');
 
@@ -11,6 +11,53 @@ const getPagination = (req) => {
   const offset = (page - 1) * limit;
   
   return { page, limit, offset };
+};
+
+// Helper function to check vehicle type compatibility
+const checkVehicleTypeCompatibility = async (driverVehicleType, shipmentVehicleType) => {
+  try {
+    logger.info(`checkVehicleTypeCompatibility called with: driver=${driverVehicleType}, shipment=${shipmentVehicleType}`);
+    
+    // Direct match (case-insensitive)
+    if (driverVehicleType.toLowerCase() === shipmentVehicleType.toLowerCase()) {
+      logger.info('Direct match found');
+      return true;
+    }
+
+    // Check if there's a vehicle type mapping
+    const vehicleTypeMapping = await VehicleType.findOne({
+      where: {
+        [Op.or]: [
+          sequelize.where(
+            sequelize.fn('LOWER', sequelize.col('vehicleType')),
+            sequelize.fn('LOWER', shipmentVehicleType)
+          ),
+          sequelize.where(
+            sequelize.fn('LOWER', sequelize.col('label')),
+            sequelize.fn('LOWER', shipmentVehicleType)
+          )
+        ]
+      }
+    });
+
+    if (vehicleTypeMapping) {
+      logger.info(`Vehicle type mapping found: vehicleType=${vehicleTypeMapping.vehicleType}, label=${vehicleTypeMapping.label}`);
+      
+      // Check if driver's vehicle type matches either the type or label
+      const typeMatch = driverVehicleType.toLowerCase() === vehicleTypeMapping.vehicleType.toLowerCase();
+      const labelMatch = driverVehicleType.toLowerCase() === vehicleTypeMapping.label.toLowerCase();
+      
+      logger.info(`Type match: ${typeMatch}, Label match: ${labelMatch}`);
+      
+      return typeMatch || labelMatch;
+    }
+
+    logger.info('No vehicle type mapping found');
+    return false;
+  } catch (error) {
+    logger.error('Error checking vehicle type compatibility:', error);
+    return false;
+  }
 };
 
 // Get all shipments for current user
@@ -589,8 +636,11 @@ exports.assignShipment = async (req, res, next) => {
       return next(new AppError('Shipment not found', 404));
     }
 
-    // Verify driver's vehicle type matches shipment's vehicle type (case-insensitive)
-    if (driver.vehicleType.toLowerCase() !== shipment.vehicleType.toLowerCase()) {
+    // Verify driver's vehicle type matches shipment's vehicle type (with mapping support)
+    logger.info(`Checking vehicle type compatibility: driver=${driver.vehicleType}, shipment=${shipment.vehicleType}`);
+    const isCompatible = await checkVehicleTypeCompatibility(driver.vehicleType, shipment.vehicleType);
+    logger.info(`Vehicle type compatibility result: ${isCompatible}`);
+    if (!isCompatible) {
       return next(new AppError(`Driver's vehicle type (${driver.vehicleType}) does not match shipment's vehicle type (${shipment.vehicleType})`, 400));
     }
 
