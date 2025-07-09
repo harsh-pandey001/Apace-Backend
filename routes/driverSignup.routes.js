@@ -1,7 +1,9 @@
 const express = require('express');
 const router = express.Router();
+// Updated for no OTP driver signup
 const { 
   driverSignup, 
+  driverSignupNoOTP,
   getAllDrivers, 
   getDriverById, 
   updateDriverAvailability,
@@ -11,13 +13,17 @@ const {
 } = require('../controllers/driverSignup.controller');
 const { 
   validateDriverSignup, 
+  validateDriverSignupNoOTP,
   validateDriverAvailability,
   validateDriverProfileUpdate
 } = require('../validations/driverSignup.validation');
 const { protect } = require('../middleware/auth');
 
-// Driver signup route (public)
-router.post('/signup', validateDriverSignup, driverSignup);
+// Driver signup route (public) - without OTP verification
+router.post('/signup', validateDriverSignupNoOTP, driverSignupNoOTP);
+
+// Driver signup route with OTP verification (for compatibility)
+router.post('/signup-with-otp', validateDriverSignup, driverSignup);
 
 // Get all drivers (admin only) - must come before /:id route
 router.get('/all', protect, getAllDrivers);

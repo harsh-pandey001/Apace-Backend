@@ -49,6 +49,49 @@ exports.validateDriverSignup = [
     .withMessage('OTP must contain only numbers')
 ];
 
+// New validation for driver signup without OTP
+exports.validateDriverSignupNoOTP = [
+  body('phone')
+    .notEmpty()
+    .withMessage('Phone number is required')
+    .isMobilePhone('any', { strictMode: false })
+    .withMessage('Please provide a valid phone number'),
+  
+  body('name')
+    .notEmpty()
+    .withMessage('Name is required')
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Name must be between 2 and 100 characters')
+    .matches(/^[a-zA-Z\s]+$/)
+    .withMessage('Name must contain only letters and spaces'),
+  
+  body('email')
+    .notEmpty()
+    .withMessage('Email is required')
+    .isEmail()
+    .withMessage('Please provide a valid email address'),
+  
+  body('vehicleType')
+    .notEmpty()
+    .withMessage('Vehicle type is required')
+    .isString()
+    .withMessage('Vehicle type must be a string')
+    .isLength({ max: 20 })
+    .withMessage('Vehicle type must be maximum 20 characters'),
+  
+  body('vehicleCapacity')
+    .notEmpty()
+    .withMessage('Vehicle capacity is required')
+    .isString()
+    .withMessage('Vehicle capacity must be a string'),
+  
+  body('vehicleNumber')
+    .notEmpty()
+    .withMessage('Vehicle number is required')
+    .matches(/^[A-Z]{2}\d{2}\s[A-Z]{2}\d{4}$/)
+    .withMessage('Vehicle number must match format: AB09 CD1234')
+];
+
 exports.validateDriverAvailability = [
   body('availability_status')
     .notEmpty()

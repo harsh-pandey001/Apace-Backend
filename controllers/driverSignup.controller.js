@@ -24,7 +24,7 @@ const findDriverByVehicleNumber = async (vehicleNumber) => {
   return await Driver.findOne({ where: { vehicleNumber } });
 };
 
-// Driver signup endpoint
+// Driver signup endpoint (with OTP verification)
 exports.driverSignup = async (req, res, next) => {
   try {
     // Check for validation errors
@@ -84,6 +84,80 @@ exports.driverSignup = async (req, res, next) => {
     });
 
     logger.info(`New driver registered: ${newDriver.email}`);
+
+    res.status(201).json({
+      status: 'success',
+      message: 'Driver registration successful',
+      data: {
+        driver: {
+          id: newDriver.id,
+          name: newDriver.name,
+          email: newDriver.email,
+          phone: newDriver.phone,
+          vehicleType: newDriver.vehicleType,
+          vehicleCapacity: newDriver.vehicleCapacity,
+          vehicleNumber: newDriver.vehicleNumber,
+          availability_status: newDriver.availability_status,
+          isActive: newDriver.isActive,
+          isVerified: newDriver.isVerified
+        }
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Driver signup endpoint without OTP verification
+exports.driverSignupNoOTP = async (req, res, next) => {
+  try {
+    // Check for validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        status: 'fail',
+        errors: errors.array()
+      });
+    }
+
+    const { 
+      phone, 
+      name, 
+      email, 
+      vehicleType, 
+      vehicleCapacity, 
+      vehicleNumber
+    } = req.body;
+
+    // Check if phone already exists
+    const existingDriverWithPhone = await findDriverByPhone(phone);
+    if (existingDriverWithPhone) {
+      return next(new AppError('Phone number already registered', 400));
+    }
+
+    // Check if email already exists
+    const existingDriverWithEmail = await findDriverByEmail(email);
+    if (existingDriverWithEmail) {
+      return next(new AppError('Email already in use', 400));
+    }
+
+    // Check if vehicle number already exists
+    const existingDriverWithVehicle = await findDriverByVehicleNumber(vehicleNumber);
+    if (existingDriverWithVehicle) {
+      return next(new AppError('Vehicle number already registered', 400));
+    }
+
+    // Create new driver
+    const newDriver = await Driver.create({
+      name,
+      email,
+      phone,
+      vehicleType,
+      vehicleCapacity,
+      vehicleNumber
+    });
+
+    logger.info(`New driver registered without OTP: ${newDriver.email}`);
 
     res.status(201).json({
       status: 'success',
