@@ -20,22 +20,31 @@ import {
   Alert,
   CircularProgress,
   useTheme,
+  Tabs,
+  Tab,
 } from '@mui/material';
 import {
   Add as AddIcon,
   PersonAdd as PersonAddIcon,
   Refresh as RefreshIcon,
+  Person as PersonIcon,
+  DirectionsCar as CarIcon,
 } from '@mui/icons-material';
 import UserFilters from '../components/UserFilters';
 import UserTable from '../components/UserTable';
+import DriverTable from '../components/DriverTable';
 import OptimizedUserRoleChart from '../components/charts/OptimizedUserRoleChart';
 import userService from '../services/userService';
+import driverService from '../services/driverService';
 
 function Users() {
   const theme = useTheme();
+  const [currentTab, setCurrentTab] = useState(0);
   const [openAddUserDialog, setOpenAddUserDialog] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({});
+  const [driverSearchTerm, setDriverSearchTerm] = useState('');
+  const [driverFilters, setDriverFilters] = useState({});
   
   // State for user statistics
   const [userStats, setUserStats] = useState({
@@ -46,9 +55,21 @@ function Users() {
     roleDistribution: {}
   });
   
+  // State for driver statistics
+  const [driverStats, setDriverStats] = useState({
+    totalDrivers: 0,
+    activeDrivers: 0,
+    inactiveDrivers: 0,
+    newDriversToday: 0,
+    verifiedDrivers: 0,
+    pendingDrivers: 0
+  });
+  
   // State for loading and error messages
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [driverLoading, setDriverLoading] = useState(true);
+  const [driverError, setDriverError] = useState(null);
   
   // Form state for adding a new user
   const [newUser, setNewUser] = useState({
@@ -84,10 +105,39 @@ function Users() {
     }
   };
 
+  // Fetch driver statistics
+  const fetchDriverStats = async () => {
+    setDriverLoading(true);
+    setDriverError(null);
+    
+    try {
+      const stats = await driverService.getDriverStats();
+      setDriverStats({
+        totalDrivers: stats.totalDrivers || 0,
+        activeDrivers: stats.activeDrivers || 0,
+        inactiveDrivers: stats.inactiveDrivers || 0,
+        newDriversToday: stats.newDriversToday || 0,
+        verifiedDrivers: stats.verifiedDrivers || 0,
+        pendingDrivers: stats.pendingDrivers || 0
+      });
+    } catch (err) {
+      console.error('Error fetching driver stats:', err);
+      setDriverError('Failed to load driver statistics. Please try again.');
+    } finally {
+      setDriverLoading(false);
+    }
+  };
+
   // Fetch stats when component mounts
   useEffect(() => {
     fetchUserStats();
+    fetchDriverStats();
   }, []);
+
+  // Handle tab change
+  const handleTabChange = (event, newValue) => {
+    setCurrentTab(newValue);
+  };
 
   // Handle user data changes from the UserTable component
   const handleUserDataChange = useCallback((userData) => {
@@ -148,6 +198,47 @@ function Users() {
 
   const handleFilter = useCallback((filterCriteria) => {
     setFilters(filterCriteria);
+  }, []);
+
+  const handleDriverSearch = useCallback((term) => {
+    setDriverSearchTerm(term);
+  }, []);
+
+  const handleDriverFilter = useCallback((filterCriteria) => {
+    setDriverFilters(filterCriteria);
+  }, []);
+
+  // Handle driver data changes from the DriverTable component
+  const handleDriverDataChange = useCallback((driverData) => {
+    if (driverData && driverData.data && driverData.data.drivers) {
+      const drivers = driverData.data.drivers;
+      
+      // Count active/inactive drivers
+      const activeDrivers = drivers.filter(driver => driver.isActive).length;
+      const inactiveDrivers = drivers.length - activeDrivers;
+      
+      // Count verified/pending drivers
+      const verifiedDrivers = drivers.filter(driver => driver.isVerified).length;
+      const pendingDrivers = drivers.length - verifiedDrivers;
+      
+      // Count drivers created today
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const newDriversToday = drivers.filter(driver => {
+        const createdDate = new Date(driver.createdAt);
+        return createdDate >= today;
+      }).length;
+      
+      setDriverStats(prevStats => ({
+        ...prevStats,
+        totalDrivers: driverData.totalDrivers || 0,
+        activeDrivers,
+        inactiveDrivers,
+        newDriversToday,
+        verifiedDrivers,
+        pendingDrivers
+      }));
+    }
   }, []);
 
   const handleInputChange = (e) => {
@@ -222,10 +313,10 @@ function Users() {
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Box>
           <Typography variant="h4" gutterBottom>
-            Users Management
+            User & Driver Management
           </Typography>
           <Typography variant="body1" color="text.secondary">
-            View and manage all user accounts in the system.
+            View and manage all users and drivers in the system.
           </Typography>
         </Box>
         <Button
@@ -238,96 +329,241 @@ function Users() {
         </Button>
       </Box>
 
-      {/* Error Display */}
-      {error && (
-        <Alert 
-          severity="error" 
-          sx={{ mb: 3 }}
-          action={
-            <Button 
-              color="inherit" 
-              size="small" 
-              startIcon={<RefreshIcon />}
-              onClick={fetchUserStats}
+      {/* Tabs */}
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+        <Tabs value={currentTab} onChange={handleTabChange} aria-label="User management tabs">
+          <Tab
+            icon={<PersonIcon />}
+            label="Users"
+            iconPosition="start"
+            sx={{ minHeight: 48 }}
+          />
+          <Tab
+            icon={<CarIcon />}
+            label="Drivers"
+            iconPosition="start"
+            sx={{ minHeight: 48 }}
+          />
+        </Tabs>
+      </Box>
+
+      {/* Tab Content */}
+      {currentTab === 0 && (
+        <>
+          {/* Users Tab Content */}
+          {/* Error Display */}
+          {error && (
+            <Alert 
+              severity="error" 
+              sx={{ mb: 3 }}
+              action={
+                <Button 
+                  color="inherit" 
+                  size="small" 
+                  startIcon={<RefreshIcon />}
+                  onClick={fetchUserStats}
+                >
+                  Retry
+                </Button>
+              }
             >
-              Retry
-            </Button>
-          }
-        >
-          {error}
-        </Alert>
+              {error}
+            </Alert>
+          )}
+
+          {/* User Stats */}
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <Grid container spacing={3} sx={{ mb: 3 }}>
+              <Grid item xs={6} sm={3}>
+                <Card sx={{ bgcolor: theme.palette.primary.light, color: theme.palette.primary.contrastText }}>
+                  <CardContent>
+                    <Typography variant="subtitle2" color="inherit" sx={{ opacity: 0.8 }}>
+                      Total Users
+                    </Typography>
+                    <Typography variant="h4" color="inherit">
+                      {userStats.totalUsers}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={6} sm={3}>
+                <Card sx={{ bgcolor: theme.palette.success.light, color: theme.palette.success.contrastText }}>
+                  <CardContent>
+                    <Typography variant="subtitle2" color="inherit" sx={{ opacity: 0.8 }}>
+                      Active Users
+                    </Typography>
+                    <Typography variant="h4" color="inherit">
+                      {userStats.activeUsers}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={6} sm={3}>
+                <Card sx={{ bgcolor: theme.palette.error.light, color: theme.palette.error.contrastText }}>
+                  <CardContent>
+                    <Typography variant="subtitle2" color="inherit" sx={{ opacity: 0.8 }}>
+                      Inactive Users
+                    </Typography>
+                    <Typography variant="h4" color="inherit">
+                      {userStats.inactiveUsers}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={6} sm={3}>
+                <Card sx={{ bgcolor: theme.palette.info.light, color: theme.palette.info.contrastText }}>
+                  <CardContent>
+                    <Typography variant="subtitle2" color="inherit" sx={{ opacity: 0.8 }}>
+                      New Today
+                    </Typography>
+                    <Typography variant="h4" color="inherit">
+                      {userStats.newUsersToday}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+            </Grid>
+          )}
+
+          {/* Role Distribution Chart */}
+          <OptimizedUserRoleChart roleDistribution={userStats.roleDistribution} />
+
+          {/* Search and Filters */}
+          <UserFilters onSearch={handleSearch} onFilter={handleFilter} />
+
+          {/* User Table */}
+          <UserTable 
+            searchTerm={searchTerm} 
+            filters={filters} 
+            onUserDataChange={handleUserDataChange}
+          />
+        </>
       )}
+      
+      {currentTab === 1 && (
+        <>
+          {/* Drivers Tab Content */}
+          {/* Error Display */}
+          {driverError && (
+            <Alert 
+              severity="error" 
+              sx={{ mb: 3 }}
+              action={
+                <Button 
+                  color="inherit" 
+                  size="small" 
+                  startIcon={<RefreshIcon />}
+                  onClick={fetchDriverStats}
+                >
+                  Retry
+                </Button>
+              }
+            >
+              {driverError}
+            </Alert>
+          )}
+          
+          {/* Driver Stats */}
+          {driverLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <Grid container spacing={3} sx={{ mb: 3 }}>
+              <Grid item xs={6} sm={2}>
+                <Card sx={{ bgcolor: theme.palette.primary.light, color: theme.palette.primary.contrastText }}>
+                  <CardContent>
+                    <Typography variant="subtitle2" color="inherit" sx={{ opacity: 0.8 }}>
+                      Total Drivers
+                    </Typography>
+                    <Typography variant="h4" color="inherit">
+                      {driverStats.totalDrivers}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={6} sm={2}>
+                <Card sx={{ bgcolor: theme.palette.success.light, color: theme.palette.success.contrastText }}>
+                  <CardContent>
+                    <Typography variant="subtitle2" color="inherit" sx={{ opacity: 0.8 }}>
+                      Active
+                    </Typography>
+                    <Typography variant="h4" color="inherit">
+                      {driverStats.activeDrivers}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={6} sm={2}>
+                <Card sx={{ bgcolor: theme.palette.error.light, color: theme.palette.error.contrastText }}>
+                  <CardContent>
+                    <Typography variant="subtitle2" color="inherit" sx={{ opacity: 0.8 }}>
+                      Inactive
+                    </Typography>
+                    <Typography variant="h4" color="inherit">
+                      {driverStats.inactiveDrivers}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={6} sm={2}>
+                <Card sx={{ bgcolor: theme.palette.info.light, color: theme.palette.info.contrastText }}>
+                  <CardContent>
+                    <Typography variant="subtitle2" color="inherit" sx={{ opacity: 0.8 }}>
+                      Verified
+                    </Typography>
+                    <Typography variant="h4" color="inherit">
+                      {driverStats.verifiedDrivers}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={6} sm={2}>
+                <Card sx={{ bgcolor: theme.palette.warning.light, color: theme.palette.warning.contrastText }}>
+                  <CardContent>
+                    <Typography variant="subtitle2" color="inherit" sx={{ opacity: 0.8 }}>
+                      Pending
+                    </Typography>
+                    <Typography variant="h4" color="inherit">
+                      {driverStats.pendingDrivers}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={6} sm={2}>
+                <Card sx={{ bgcolor: theme.palette.secondary.light, color: theme.palette.secondary.contrastText }}>
+                  <CardContent>
+                    <Typography variant="subtitle2" color="inherit" sx={{ opacity: 0.8 }}>
+                      New Today
+                    </Typography>
+                    <Typography variant="h4" color="inherit">
+                      {driverStats.newDriversToday}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+            </Grid>
+          )}
 
-      {/* User Stats */}
-      {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
-          <CircularProgress />
-        </Box>
-      ) : (
-        <Grid container spacing={3} sx={{ mb: 3 }}>
-          <Grid item xs={6} sm={3}>
-            <Card sx={{ bgcolor: theme.palette.primary.light, color: theme.palette.primary.contrastText }}>
-              <CardContent>
-                <Typography variant="subtitle2" color="inherit" sx={{ opacity: 0.8 }}>
-                  Total Users
-                </Typography>
-                <Typography variant="h4" color="inherit">
-                  {userStats.totalUsers}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={6} sm={3}>
-            <Card sx={{ bgcolor: theme.palette.success.light, color: theme.palette.success.contrastText }}>
-              <CardContent>
-                <Typography variant="subtitle2" color="inherit" sx={{ opacity: 0.8 }}>
-                  Active Users
-                </Typography>
-                <Typography variant="h4" color="inherit">
-                  {userStats.activeUsers}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={6} sm={3}>
-            <Card sx={{ bgcolor: theme.palette.error.light, color: theme.palette.error.contrastText }}>
-              <CardContent>
-                <Typography variant="subtitle2" color="inherit" sx={{ opacity: 0.8 }}>
-                  Inactive Users
-                </Typography>
-                <Typography variant="h4" color="inherit">
-                  {userStats.inactiveUsers}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={6} sm={3}>
-            <Card sx={{ bgcolor: theme.palette.info.light, color: theme.palette.info.contrastText }}>
-              <CardContent>
-                <Typography variant="subtitle2" color="inherit" sx={{ opacity: 0.8 }}>
-                  New Today
-                </Typography>
-                <Typography variant="h4" color="inherit">
-                  {userStats.newUsersToday}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
+          {/* Driver Search and Filters */}
+          <UserFilters 
+            onSearch={handleDriverSearch} 
+            onFilter={handleDriverFilter}
+            isDriverMode={true}
+          />
+
+          {/* Driver Table */}
+          <DriverTable 
+            searchTerm={driverSearchTerm} 
+            filters={driverFilters} 
+            onDriverDataChange={handleDriverDataChange}
+          />
+        </>
       )}
-
-      {/* Role Distribution Chart */}
-      <OptimizedUserRoleChart roleDistribution={userStats.roleDistribution} />
-
-      {/* Search and Filters */}
-      <UserFilters onSearch={handleSearch} onFilter={handleFilter} />
-
-      {/* User Table */}
-      <UserTable 
-        searchTerm={searchTerm} 
-        filters={filters} 
-        onUserDataChange={handleUserDataChange}
-      />
 
       {/* Add User Dialog */}
       <Dialog open={openAddUserDialog} onClose={handleAddUserClose} fullWidth maxWidth="sm">

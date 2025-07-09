@@ -117,7 +117,7 @@ exports.updateProfile = async (req, res, next) => {
 
 // Admin routes below
 
-// Get all users and drivers (admin only)
+// Get all users only (admin only) - excludes drivers and admins
 exports.getAllUsers = async (req, res, next) => {
   try {
     // Check if user is admin
@@ -130,73 +130,29 @@ exports.getAllUsers = async (req, res, next) => {
     const limit = parseInt(req.query.limit, 10) || 50;
     const offset = (page - 1) * limit;
 
-    // Get users
-    const users = await User.findAll({
+    // Get users only (no drivers or admins)
+    const { count, rows: users } = await User.findAndCountAll({
       attributes: { exclude: ['password'] },
-      order: [['createdAt', 'DESC']]
+      order: [['createdAt', 'DESC']],
+      limit,
+      offset
     });
 
-    // Get drivers with document status
-    const drivers = await Driver.findAll({
-      attributes: ['id', 'name', 'email', 'phone', 'isActive', 'isVerified', 'availability_status', 'vehicleType', 'vehicleCapacity', 'vehicleNumber', 'createdAt', 'updatedAt'],
-      include: [{
-        model: DriverDocument,
-        as: 'documents',
-        attributes: ['status', 'updated_at'],
-        required: false
-      }],
-      order: [['createdAt', 'DESC']]
-    });
-
-    // Format data to include type and combine
+    // Format users data
     const formattedUsers = users.map(user => ({
       ...user.toJSON(),
       userType: 'user',
       role: 'user'
     }));
 
-    const formattedDrivers = drivers.map(driver => {
-      const driverData = driver.toJSON();
-      const documentStatus = driverData.documents?.status || 'pending';
-      
-      // Create clean driver object without the documents association
-      const { documents, ...cleanDriverData } = driverData;
-      
-      return {
-        ...cleanDriverData,
-        userType: 'driver',
-        role: 'driver',
-        firstName: driverData.name.split(' ')[0] || driverData.name,
-        lastName: driverData.name.split(' ').slice(1).join(' ') || '',
-        active: driverData.isActive,
-        // Use document status as the primary verification indicator
-        isVerified: documentStatus === 'verified',
-        documentVerificationStatus: documentStatus
-      };
-    });
-
-    // Combine and sort by creation date
-    const allUsers = [...formattedUsers, ...formattedDrivers].sort((a, b) => 
-      new Date(b.createdAt) - new Date(a.createdAt)
-    );
-
-    // Apply pagination to combined results
-    const totalCount = allUsers.length;
-    const paginatedUsers = allUsers.slice(offset, offset + limit);
-
     res.status(200).json({
       status: 'success',
-      results: paginatedUsers.length,
-      totalUsers: totalCount,
-      totalPages: Math.ceil(totalCount / limit),
+      results: formattedUsers.length,
+      totalUsers: count,
+      totalPages: Math.ceil(count / limit),
       currentPage: page,
       data: {
-        users: paginatedUsers,
-        summary: {
-          totalUsers: formattedUsers.length,
-          totalDrivers: formattedDrivers.length,
-          totalAll: totalCount
-        }
+        users: formattedUsers
       }
     });
   } catch (error) {

@@ -26,7 +26,12 @@ import {
   Alert,
   CircularProgress,
   Chip,
-  Tooltip
+  Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions
 } from '@mui/material';
 import {
   Visibility as ViewIcon,
@@ -36,7 +41,8 @@ import {
   CheckCircle as ApproveIcon,
   Cancel as RejectIcon,
   Download as DownloadIcon,
-  Preview as PreviewIcon
+  Preview as PreviewIcon,
+  Delete as DeleteIcon
 } from '@mui/icons-material';
 import { format } from 'date-fns';
 import DocumentStatusChip from '../components/DocumentStatusChip';
@@ -50,7 +56,7 @@ const DriverDocuments = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
-  const [statusFilter, setStatusFilter] = useState('pending');
+  const [statusFilter, setStatusFilter] = useState(''); // Show all by default
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDocument, setSelectedDocument] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -61,6 +67,14 @@ const DriverDocuments = () => {
     documentType: null,
     documentName: null
   });
+  
+  // Delete confirmation dialog state
+  const [deleteDialog, setDeleteDialog] = useState({
+    open: false,
+    documentId: null,
+    driverName: null
+  });
+  const [deleteLoading, setDeleteLoading] = useState(false);
   
   // Snackbar state
   const [snackbar, setSnackbar] = useState({
@@ -73,10 +87,12 @@ const DriverDocuments = () => {
   const fetchDocuments = async () => {
     setLoading(true);
     try {
+      // Use the service method which now properly handles optional status and search
       const response = await driverDocumentService.getPendingDocuments(
         page + 1,
         rowsPerPage,
-        statusFilter
+        statusFilter || null,
+        searchTerm || null
       );
       
       setDocuments(response.data.documents || []);
@@ -101,7 +117,7 @@ const DriverDocuments = () => {
 
   useEffect(() => {
     fetchDocuments();
-  }, [page, rowsPerPage, statusFilter]);
+  }, [page, rowsPerPage, statusFilter, searchTerm]);
 
   useEffect(() => {
     fetchStatistics();
@@ -195,13 +211,50 @@ const DriverDocuments = () => {
     });
   };
 
-  const filteredDocuments = documents.filter(doc => {
-    const searchLower = searchTerm.toLowerCase();
-    const driverName = `${doc.driver?.firstName} ${doc.driver?.lastName}`.toLowerCase();
-    const email = doc.driver?.email?.toLowerCase() || '';
+  // Handle delete document
+  const handleDeleteDocument = async (documentId, driverName) => {
+    setDeleteDialog({
+      open: true,
+      documentId,
+      driverName
+    });
+  };
+
+  const confirmDeleteDocument = async () => {
+    if (!deleteDialog.documentId) return;
     
-    return driverName.includes(searchLower) || email.includes(searchLower);
-  });
+    setDeleteLoading(true);
+    try {
+      await driverDocumentService.deleteDocument(deleteDialog.documentId);
+      showSnackbar('Document deleted successfully', 'success');
+      
+      // Refresh documents and statistics
+      fetchDocuments();
+      fetchStatistics();
+      
+      setDeleteDialog({
+        open: false,
+        documentId: null,
+        driverName: null
+      });
+    } catch (error) {
+      console.error('Error deleting document:', error);
+      showSnackbar('Failed to delete document', 'error');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  const cancelDeleteDocument = () => {
+    setDeleteDialog({
+      open: false,
+      documentId: null,
+      driverName: null
+    });
+  };
+
+  // No need for client-side filtering since we're doing server-side filtering
+  const filteredDocuments = documents;
 
   return (
     <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
@@ -288,6 +341,7 @@ const DriverDocuments = () => {
                 onChange={handleStatusFilterChange}
                 label="Status Filter"
               >
+                <MenuItem value="">All Status</MenuItem>
                 <MenuItem value="pending">Pending</MenuItem>
                 <MenuItem value="verified">Verified</MenuItem>
                 <MenuItem value="rejected">Rejected</MenuItem>
@@ -346,15 +400,26 @@ const DriverDocuments = () => {
                   <TableRow key={document.id} hover>
                     <TableCell>
                       <Box>
-                        <Typography variant="body2" fontWeight={500}>
-                          {document.driver?.firstName} {document.driver?.lastName}
-                        </Typography>
+                        <Box display="flex" alignItems="center" gap={1}>
+                          <Typography variant="body2" fontWeight={500}>
+                            {document.driver?.deleted ? 'Deleted Driver' : 
+                             `${document.driver?.firstName || 'N/A'} ${document.driver?.lastName || ''}`}
+                          </Typography>
+                          {document.driver?.deleted && (
+                            <Chip 
+                              label="Deleted" 
+                              size="small" 
+                              color="default"
+                              variant="outlined"
+                            />
+                          )}
+                        </Box>
                         <Typography variant="caption" color="text.secondary">
-                          {document.driver?.email}
+                          {document.driver?.email || 'N/A'}
                         </Typography>
                         <br />
                         <Typography variant="caption" color="text.secondary">
-                          {document.driver?.phone}
+                          {document.driver?.phone || 'N/A'}
                         </Typography>
                       </Box>
                     </TableCell>
@@ -366,11 +431,14 @@ const DriverDocuments = () => {
                         </Typography>
                       </Box>
                       <Box display="flex" gap={0.5} mt={1} flexWrap="wrap">
-                        {document.documents?.driving_license?.uploaded && (
+                        {/* Driving License */}
+                        {document.documents?.driving_license?.uploaded ? (
                           <Chip 
-                            label="DL" 
-                            size="small" 
-                            variant="outlined" 
+                            label="DL"
+                            size="small"
+                            color={document.documents.driving_license.status === 'verified' ? 'success' : 
+                                   document.documents.driving_license.status === 'rejected' ? 'error' : 'warning'}
+                            variant="filled"
                             clickable
                             onClick={() => handlePreviewDocument(
                               document.documents.driving_license.path, 
@@ -379,12 +447,18 @@ const DriverDocuments = () => {
                             )}
                             icon={<PreviewIcon />}
                           />
+                        ) : (
+                          <Chip label="DL" size="small" variant="outlined" disabled />
                         )}
-                        {document.documents?.passport_photo?.uploaded && (
+                        
+                        {/* Passport Photo */}
+                        {document.documents?.passport_photo?.uploaded ? (
                           <Chip 
-                            label="Photo" 
-                            size="small" 
-                            variant="outlined" 
+                            label="Photo"
+                            size="small"
+                            color={document.documents.passport_photo.status === 'verified' ? 'success' : 
+                                   document.documents.passport_photo.status === 'rejected' ? 'error' : 'warning'}
+                            variant="filled"
                             clickable
                             onClick={() => handlePreviewDocument(
                               document.documents.passport_photo.path, 
@@ -393,12 +467,18 @@ const DriverDocuments = () => {
                             )}
                             icon={<PreviewIcon />}
                           />
+                        ) : (
+                          <Chip label="Photo" size="small" variant="outlined" disabled />
                         )}
-                        {document.documents?.vehicle_rc?.uploaded && (
+                        
+                        {/* Vehicle RC */}
+                        {document.documents?.vehicle_rc?.uploaded ? (
                           <Chip 
-                            label="RC" 
-                            size="small" 
-                            variant="outlined" 
+                            label="RC"
+                            size="small"
+                            color={document.documents.vehicle_rc.status === 'verified' ? 'success' : 
+                                   document.documents.vehicle_rc.status === 'rejected' ? 'error' : 'warning'}
+                            variant="filled"
                             clickable
                             onClick={() => handlePreviewDocument(
                               document.documents.vehicle_rc.path, 
@@ -407,12 +487,18 @@ const DriverDocuments = () => {
                             )}
                             icon={<PreviewIcon />}
                           />
+                        ) : (
+                          <Chip label="RC" size="small" variant="outlined" disabled />
                         )}
-                        {document.documents?.insurance_paper?.uploaded && (
+                        
+                        {/* Insurance Paper */}
+                        {document.documents?.insurance_paper?.uploaded ? (
                           <Chip 
-                            label="Insurance" 
-                            size="small" 
-                            variant="outlined" 
+                            label="Insurance"
+                            size="small"
+                            color={document.documents.insurance_paper.status === 'verified' ? 'success' : 
+                                   document.documents.insurance_paper.status === 'rejected' ? 'error' : 'warning'}
+                            variant="filled"
                             clickable
                             onClick={() => handlePreviewDocument(
                               document.documents.insurance_paper.path, 
@@ -421,6 +507,8 @@ const DriverDocuments = () => {
                             )}
                             icon={<PreviewIcon />}
                           />
+                        ) : (
+                          <Chip label="Insurance" size="small" variant="outlined" disabled />
                         )}
                       </Box>
                     </TableCell>
@@ -468,6 +556,20 @@ const DriverDocuments = () => {
                             </Tooltip>
                           </>
                         )}
+                        
+                        <Tooltip title="Delete Document">
+                          <IconButton
+                            size="small"
+                            color="error"
+                            onClick={() => handleDeleteDocument(
+                              document.id,
+                              document.driver?.deleted ? 'Deleted Driver' : 
+                              `${document.driver?.firstName || 'N/A'} ${document.driver?.lastName || ''}`
+                            )}
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        </Tooltip>
                       </Box>
                     </TableCell>
                   </TableRow>
@@ -505,6 +607,41 @@ const DriverDocuments = () => {
         documentType={previewModal.documentType}
         documentName={previewModal.documentName}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialog.open}
+        onClose={cancelDeleteDocument}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ color: 'error.main', display: 'flex', alignItems: 'center', gap: 1 }}>
+          <DeleteIcon />
+          Delete Document
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete all documents for{' '}
+            <strong>{deleteDialog.driverName}</strong>?
+            <br /><br />
+            <strong>⚠️ WARNING:</strong> This action cannot be undone. All uploaded documents and files will be permanently removed from the system.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={cancelDeleteDocument} disabled={deleteLoading}>
+            Cancel
+          </Button>
+          <Button
+            onClick={confirmDeleteDocument}
+            color="error"
+            variant="contained"
+            disabled={deleteLoading}
+            startIcon={deleteLoading ? <CircularProgress size={16} /> : <DeleteIcon />}
+          >
+            {deleteLoading ? 'Deleting...' : 'Delete Document'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Snackbar */}
       <Snackbar

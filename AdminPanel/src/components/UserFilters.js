@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Paper,
@@ -22,14 +22,17 @@ import {
   ExpandLess as ExpandLessIcon,
 } from '@mui/icons-material';
 
-const UserFilters = ({ onSearch, onFilter }) => {
+const UserFilters = ({ onSearch, onFilter, isDriverMode = false }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [expandFilters, setExpandFilters] = useState(false);
   const [filters, setFilters] = useState({
-    role: '',
     status: '',
     dateRange: '',
+    vehicleType: '',
+    verified: '',
+    availability: '',
   });
+  const [vehicleTypes, setVehicleTypes] = useState([]);
   const [activeFilters, setActiveFilters] = useState([]);
 
   const handleSearchChange = (e) => {
@@ -53,16 +56,29 @@ const UserFilters = ({ onSearch, onFilter }) => {
     // Create a list of active filters for the chips
     const newActiveFilters = [];
     
-    if (filters.role) {
-      const roleLabels = {
-        'admin': 'Admin',
-        'driver': 'Driver', 
-        'user': 'Customer'
-      };
+    
+    if (filters.vehicleType && isDriverMode) {
       newActiveFilters.push({ 
-        field: 'role', 
-        value: filters.role, 
-        label: `Role: ${roleLabels[filters.role] || filters.role}` 
+        field: 'vehicleType', 
+        value: filters.vehicleType, 
+        label: `Vehicle: ${filters.vehicleType}` 
+      });
+    }
+    
+    if (filters.verified && isDriverMode) {
+      const verifiedLabel = filters.verified === 'true' ? 'Verified' : 'Pending';
+      newActiveFilters.push({ 
+        field: 'verified', 
+        value: filters.verified, 
+        label: `Verification: ${verifiedLabel}` 
+      });
+    }
+    
+    if (filters.availability && isDriverMode) {
+      newActiveFilters.push({ 
+        field: 'availability', 
+        value: filters.availability, 
+        label: `Availability: ${filters.availability.charAt(0).toUpperCase() + filters.availability.slice(1)}` 
       });
     }
     
@@ -92,11 +108,46 @@ const UserFilters = ({ onSearch, onFilter }) => {
     onFilter(filters);
   };
 
+  // Fetch vehicle types from API when in driver mode
+  useEffect(() => {
+    if (isDriverMode) {
+      fetchVehicleTypes();
+    }
+  }, [isDriverMode]);
+
+  const fetchVehicleTypes = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/vehicles');
+      const data = await response.json();
+      if (data.success && data.data) {
+        const types = data.data.map(vehicle => ({
+          value: vehicle.type.toLowerCase(),
+          label: vehicle.name || vehicle.type
+        }));
+        setVehicleTypes(types);
+      }
+    } catch (error) {
+      console.error('Error fetching vehicle types:', error);
+      // Fallback to static list
+      setVehicleTypes([
+        { value: 'bike', label: 'Bike' },
+        { value: 'motorcycle', label: 'Motorcycle' },
+        { value: 'car', label: 'Car' },
+        { value: 'van', label: 'Van' },
+        { value: 'truck', label: 'Truck' },
+        { value: 'mini_truck', label: 'Mini Truck' },
+        { value: 'pickup', label: 'Pickup' }
+      ]);
+    }
+  };
+
   const clearFilters = () => {
     setFilters({
-      role: '',
       status: '',
       dateRange: '',
+      vehicleType: '',
+      verified: '',
+      availability: '',
     });
     setActiveFilters([]);
     onFilter({}); // Reset filters
@@ -124,7 +175,7 @@ const UserFilters = ({ onSearch, onFilter }) => {
         <TextField
           fullWidth
           variant="outlined"
-          placeholder="Search by name, email, or phone..."
+          placeholder={isDriverMode ? "Search by name, email, phone, vehicle type, or vehicle number..." : "Search by name, email, or phone..."}
           value={searchTerm}
           onChange={handleSearchChange}
           aria-label="Search users"
@@ -164,7 +215,7 @@ const UserFilters = ({ onSearch, onFilter }) => {
           aria-controls="filter-panel"
           aria-label={expandFilters ? "Hide filters" : "Show filters"}
         >
-          Filter Users
+          {isDriverMode ? 'Filter Drivers' : 'Filter Users'}
         </Button>
         
         {activeFilters.length > 0 && (
@@ -199,66 +250,160 @@ const UserFilters = ({ onSearch, onFilter }) => {
       {/* Expandable Filters */}
       <Collapse in={expandFilters} id="filter-panel" role="region" aria-label="Filter options">
         <Grid container spacing={2} sx={{ mb: 2 }}>
-          <Grid item xs={12} sm={4}>
-            <FormControl fullWidth variant="outlined" size="small">
-              <InputLabel id="role-filter-label">Role</InputLabel>
-              <Select
-                labelId="role-filter-label"
-                id="role-filter"
-                value={filters.role}
-                label="Role"
-                onChange={(e) => handleFilterChange('role', e.target.value)}
-              >
-                <MenuItem value="">
-                  <em>All Roles</em>
-                </MenuItem>
-                <MenuItem value="admin">Admin</MenuItem>
-                <MenuItem value="driver">Driver</MenuItem>
-                <MenuItem value="user">Customer</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
           
-          <Grid item xs={12} sm={4}>
-            <FormControl fullWidth variant="outlined" size="small">
-              <InputLabel id="status-filter-label">Status</InputLabel>
-              <Select
-                labelId="status-filter-label"
-                id="status-filter"
-                value={filters.status}
-                label="Status"
-                onChange={(e) => handleFilterChange('status', e.target.value)}
-              >
-                <MenuItem value="">
-                  <em>All Statuses</em>
-                </MenuItem>
-                <MenuItem value="active">Active</MenuItem>
-                <MenuItem value="inactive">Inactive</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
+          {isDriverMode && (
+            <>
+              <Grid item xs={12} sm={3}>
+                <FormControl fullWidth variant="outlined" size="small">
+                  <InputLabel id="vehicle-type-filter-label">Vehicle Type</InputLabel>
+                  <Select
+                    labelId="vehicle-type-filter-label"
+                    id="vehicle-type-filter"
+                    value={filters.vehicleType}
+                    label="Vehicle Type"
+                    onChange={(e) => handleFilterChange('vehicleType', e.target.value)}
+                  >
+                    <MenuItem value="">
+                      <em>All Vehicle Types</em>
+                    </MenuItem>
+                    {vehicleTypes.map((type) => (
+                      <MenuItem key={type.value} value={type.value}>
+                        {type.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              
+              <Grid item xs={12} sm={3}>
+                <FormControl fullWidth variant="outlined" size="small">
+                  <InputLabel id="verified-filter-label">Verification Status</InputLabel>
+                  <Select
+                    labelId="verified-filter-label"
+                    id="verified-filter"
+                    value={filters.verified}
+                    label="Verification Status"
+                    onChange={(e) => handleFilterChange('verified', e.target.value)}
+                  >
+                    <MenuItem value="">
+                      <em>All Statuses</em>
+                    </MenuItem>
+                    <MenuItem value="true">Verified</MenuItem>
+                    <MenuItem value="false">Pending Verification</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              
+              <Grid item xs={12} sm={3}>
+                <FormControl fullWidth variant="outlined" size="small">
+                  <InputLabel id="availability-filter-label">Availability Status</InputLabel>
+                  <Select
+                    labelId="availability-filter-label"
+                    id="availability-filter"
+                    value={filters.availability}
+                    label="Availability Status"
+                    onChange={(e) => handleFilterChange('availability', e.target.value)}
+                  >
+                    <MenuItem value="">
+                      <em>All Availability</em>
+                    </MenuItem>
+                    <MenuItem value="online">Online</MenuItem>
+                    <MenuItem value="offline">Offline</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+            </>
+          )}
           
-          <Grid item xs={12} sm={4}>
-            <FormControl fullWidth variant="outlined" size="small">
-              <InputLabel id="date-filter-label">Registration Date</InputLabel>
-              <Select
-                labelId="date-filter-label"
-                id="date-filter"
-                value={filters.dateRange}
-                label="Registration Date"
-                onChange={(e) => handleFilterChange('dateRange', e.target.value)}
-              >
-                <MenuItem value="">
-                  <em>All Time</em>
-                </MenuItem>
-                <MenuItem value="today">Today</MenuItem>
-                <MenuItem value="yesterday">Yesterday</MenuItem>
-                <MenuItem value="last7days">Last 7 Days</MenuItem>
-                <MenuItem value="last30days">Last 30 Days</MenuItem>
-                <MenuItem value="last90days">Last 90 Days</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
+          {!isDriverMode && (
+            <>
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth variant="outlined" size="small">
+                  <InputLabel id="status-filter-label">Status</InputLabel>
+                  <Select
+                    labelId="status-filter-label"
+                    id="status-filter"
+                    value={filters.status}
+                    label="Status"
+                    onChange={(e) => handleFilterChange('status', e.target.value)}
+                  >
+                    <MenuItem value="">
+                      <em>All Statuses</em>
+                    </MenuItem>
+                    <MenuItem value="active">Active</MenuItem>
+                    <MenuItem value="inactive">Inactive</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth variant="outlined" size="small">
+                  <InputLabel id="date-filter-label">Registration Date</InputLabel>
+                  <Select
+                    labelId="date-filter-label"
+                    id="date-filter"
+                    value={filters.dateRange}
+                    label="Registration Date"
+                    onChange={(e) => handleFilterChange('dateRange', e.target.value)}
+                  >
+                    <MenuItem value="">
+                      <em>All Time</em>
+                    </MenuItem>
+                    <MenuItem value="today">Today</MenuItem>
+                    <MenuItem value="yesterday">Yesterday</MenuItem>
+                    <MenuItem value="last7days">Last 7 Days</MenuItem>
+                    <MenuItem value="last30days">Last 30 Days</MenuItem>
+                    <MenuItem value="last90days">Last 90 Days</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+            </>
+          )}
+          
+          {isDriverMode && (
+            <>
+              <Grid item xs={12} sm={3}>
+                <FormControl fullWidth variant="outlined" size="small">
+                  <InputLabel id="status-filter-label">Activity Status</InputLabel>
+                  <Select
+                    labelId="status-filter-label"
+                    id="status-filter"
+                    value={filters.status}
+                    label="Activity Status"
+                    onChange={(e) => handleFilterChange('status', e.target.value)}
+                  >
+                    <MenuItem value="">
+                      <em>All Statuses</em>
+                    </MenuItem>
+                    <MenuItem value="active">Active</MenuItem>
+                    <MenuItem value="inactive">Inactive</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              
+              <Grid item xs={12} sm={3}>
+                <FormControl fullWidth variant="outlined" size="small">
+                  <InputLabel id="date-filter-label">Registration Date</InputLabel>
+                  <Select
+                    labelId="date-filter-label"
+                    id="date-filter"
+                    value={filters.dateRange}
+                    label="Registration Date"
+                    onChange={(e) => handleFilterChange('dateRange', e.target.value)}
+                  >
+                    <MenuItem value="">
+                      <em>All Time</em>
+                    </MenuItem>
+                    <MenuItem value="today">Today</MenuItem>
+                    <MenuItem value="yesterday">Yesterday</MenuItem>
+                    <MenuItem value="last7days">Last 7 Days</MenuItem>
+                    <MenuItem value="last30days">Last 30 Days</MenuItem>
+                    <MenuItem value="last90days">Last 90 Days</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+            </>
+          )}
         </Grid>
         
         <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>

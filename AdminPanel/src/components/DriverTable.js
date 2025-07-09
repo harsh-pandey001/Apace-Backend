@@ -22,11 +22,6 @@ import {
   CircularProgress,
   Alert,
   Snackbar,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogContentText,
-  DialogActions,
 } from '@mui/material';
 import {
   DeleteForever as DeleteForeverIcon,
@@ -35,25 +30,29 @@ import {
   Block as BlockIcon,
   CheckCircle as CheckCircleIcon,
   Refresh as RefreshIcon,
+  VerifiedUser as VerifiedUserIcon,
+  Pending as PendingIcon,
+  DirectionsCar as CarIcon,
 } from '@mui/icons-material';
 import { visuallyHidden } from '@mui/utils';
 import { format } from 'date-fns';
-import userService from '../services/userService';
-import UserDetailsModal from './UserDetailsModal';
+import driverService from '../services/driverService';
+import DriverDetailsModal from './DriverDetailsModal';
 import DeleteConfirmationDialog from './DeleteConfirmationDialog';
 
-// Column definition
+// Column definition for drivers
 const headCells = [
-  { id: 'name', label: 'Name', width: '25%' },
+  { id: 'name', label: 'Name', width: '20%' },
   { id: 'email', label: 'Email', width: '20%' },
   { id: 'phone', label: 'Phone', width: '15%' },
-  { id: 'role', label: 'Role', width: '10%' },
+  { id: 'vehicleType', label: 'Vehicle Type', width: '15%' },
+  { id: 'vehicleNumber', label: 'Vehicle Number', width: '15%' },
   { id: 'status', label: 'Status', width: '10%' },
   { id: 'createdAt', label: 'Registration Date', width: '15%' },
   { id: 'actions', label: 'Actions', width: '5%' },
 ];
 
-function UserTableHead(props) {
+function DriverTableHead(props) {
   const { order, orderBy, onRequestSort } = props;
   
   const createSortHandler = (property) => (event) => {
@@ -94,38 +93,36 @@ function UserTableHead(props) {
   );
 }
 
-UserTableHead.propTypes = {
+DriverTableHead.propTypes = {
   onRequestSort: PropTypes.func.isRequired,
   order: PropTypes.oneOf(['asc', 'desc']).isRequired,
   orderBy: PropTypes.string.isRequired,
 };
 
-const UserTable = ({ searchTerm, filters, onUserDataChange }) => {
+const DriverTable = ({ searchTerm, filters, onDriverDataChange }) => {
   // State for sorting
   const [order, setOrder] = useState('desc');
   const [orderBy, setOrderBy] = useState('createdAt');
   
-  // State for users data
-  const [users, setUsers] = useState([]);
+  // State for drivers data
+  const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
   // State for pagination
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [totalUsers, setTotalUsers] = useState(0);
+  const [totalDrivers, setTotalDrivers] = useState(0);
   
   // State for action menu
   const [anchorEl, setAnchorEl] = useState(null);
-  const [selectedUser, setSelectedUser] = useState(null);
+  const [selectedDriver, setSelectedDriver] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
-  const [permanentDeleteDialogOpen, setPermanentDeleteDialogOpen] = useState(false);
-  const [permanentDeleteLoading, setPermanentDeleteLoading] = useState(false);
   
-  // State for user details modal
-  const [userDetailsOpen, setUserDetailsOpen] = useState(false);
-  const [selectedUserId, setSelectedUserId] = useState(null);
+  // State for driver details modal
+  const [driverDetailsOpen, setDriverDetailsOpen] = useState(false);
+  const [selectedDriverId, setSelectedDriverId] = useState(null);
   
   // State for snackbar
   const [snackbar, setSnackbar] = useState({
@@ -134,32 +131,50 @@ const UserTable = ({ searchTerm, filters, onUserDataChange }) => {
     severity: 'success'
   });
 
-  // State for all users (unfiltered)
-  const [allUsers, setAllUsers] = useState([]);
+  // State for all drivers (unfiltered)
+  const [allDrivers, setAllDrivers] = useState([]);
 
-  // Filter users client-side based on search and filters
-  const getFilteredUsers = React.useCallback(() => {
-    let filteredUsers = [...allUsers];
-
-    // Exclude admin users from display
-    filteredUsers = filteredUsers.filter(user => user.role !== 'admin');
+  // Filter drivers client-side based on search and filters
+  const getFilteredDrivers = React.useCallback(() => {
+    let filteredDrivers = [...allDrivers];
 
     // Apply search filter
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
-      filteredUsers = filteredUsers.filter(user =>
-        user.firstName?.toLowerCase().includes(searchLower) ||
-        user.lastName?.toLowerCase().includes(searchLower) ||
-        user.email?.toLowerCase().includes(searchLower) ||
-        user.phone?.toLowerCase().includes(searchLower)
+      filteredDrivers = filteredDrivers.filter(driver =>
+        driver.name?.toLowerCase().includes(searchLower) ||
+        driver.email?.toLowerCase().includes(searchLower) ||
+        driver.phone?.toLowerCase().includes(searchLower) ||
+        driver.vehicleType?.toLowerCase().includes(searchLower) ||
+        driver.vehicleNumber?.toLowerCase().includes(searchLower) ||
+        driver.availability_status?.toLowerCase().includes(searchLower)
       );
     }
-
 
     // Apply status filter
     if (filters.status) {
       const isActive = filters.status === 'active';
-      filteredUsers = filteredUsers.filter(user => user.active === isActive);
+      filteredDrivers = filteredDrivers.filter(driver => driver.isActive === isActive);
+    }
+
+    // Apply verification filter
+    if (filters.verified !== undefined && filters.verified !== '') {
+      const isVerified = filters.verified === 'true';
+      filteredDrivers = filteredDrivers.filter(driver => driver.isVerified === isVerified);
+    }
+
+    // Apply availability filter
+    if (filters.availability) {
+      filteredDrivers = filteredDrivers.filter(driver => 
+        driver.availability_status?.toLowerCase() === filters.availability.toLowerCase()
+      );
+    }
+
+    // Apply vehicle type filter
+    if (filters.vehicleType) {
+      filteredDrivers = filteredDrivers.filter(driver => 
+        driver.vehicleType?.toLowerCase() === filters.vehicleType.toLowerCase()
+      );
     }
 
     // Apply date range filter
@@ -174,11 +189,11 @@ const UserTable = ({ searchTerm, filters, onUserDataChange }) => {
         case 'yesterday':
           startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
           const endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-          filteredUsers = filteredUsers.filter(user => {
-            const userDate = new Date(user.createdAt);
-            return userDate >= startDate && userDate < endDate;
+          filteredDrivers = filteredDrivers.filter(driver => {
+            const driverDate = new Date(driver.createdAt);
+            return driverDate >= startDate && driverDate < endDate;
           });
-          return filteredUsers;
+          return filteredDrivers;
         case 'last7days':
           startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
           break;
@@ -193,105 +208,93 @@ const UserTable = ({ searchTerm, filters, onUserDataChange }) => {
       }
 
       if (startDate && filters.dateRange !== 'yesterday') {
-        filteredUsers = filteredUsers.filter(user => {
-          const userDate = new Date(user.createdAt);
-          return userDate >= startDate;
+        filteredDrivers = filteredDrivers.filter(driver => {
+          const driverDate = new Date(driver.createdAt);
+          return driverDate >= startDate;
         });
       }
     }
 
-    return filteredUsers;
-  }, [allUsers, searchTerm, filters]);
+    return filteredDrivers;
+  }, [allDrivers, searchTerm, filters]);
 
-  // Get paginated users from filtered results
-  const getPaginatedUsers = React.useCallback(() => {
-    const filteredUsers = getFilteredUsers();
+  // Get paginated drivers from filtered results
+  const getPaginatedDrivers = React.useCallback(() => {
+    const filteredDrivers = getFilteredDrivers();
     const startIndex = page * rowsPerPage;
     const endIndex = startIndex + rowsPerPage;
-    return filteredUsers.slice(startIndex, endIndex);
-  }, [getFilteredUsers, page, rowsPerPage]);
+    return filteredDrivers.slice(startIndex, endIndex);
+  }, [getFilteredDrivers, page, rowsPerPage]);
 
-  // Fetch users data from API
-  const fetchUsers = async () => {
+  // Fetch drivers data from API
+  const fetchDrivers = async () => {
     setLoading(true);
     setError(null);
     
     try {
-      // Fetch all users without server-side filtering since API doesn't support it
-      const response = await userService.getAllUsers({
+      // Fetch all drivers without server-side filtering
+      const response = await driverService.getAllDrivers({
         page: 1,
-        limit: 9999, // Get all users for client-side filtering
+        limit: 9999, // Get all drivers for client-side filtering
       });
       
-      setAllUsers(response.data.users || []);
+      setAllDrivers(response.data.drivers || []);
     } catch (err) {
-      console.error('Error fetching users:', err);
-      setError('Failed to load users. Please try again.');
+      console.error('Error fetching drivers:', err);
+      setError('Failed to load drivers. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Fetch users when component mounts
+  // Fetch drivers when component mounts
   useEffect(() => {
-    if (allUsers.length === 0) {
-      fetchUsers();
+    if (allDrivers.length === 0) {
+      fetchDrivers();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Update filtered results when search term, filters, or pagination changes
   useEffect(() => {
-    if (allUsers.length > 0) {
-      const filteredUsers = getFilteredUsers();
-      setUsers(getPaginatedUsers());
-      setTotalUsers(filteredUsers.length);
+    if (allDrivers.length > 0) {
+      const filteredDrivers = getFilteredDrivers();
+      setDrivers(getPaginatedDrivers());
+      setTotalDrivers(filteredDrivers.length);
       
       // Reset to first page if current page exceeds available pages
-      const maxPages = Math.ceil(filteredUsers.length / rowsPerPage);
+      const maxPages = Math.ceil(filteredDrivers.length / rowsPerPage);
       if (page >= maxPages && maxPages > 0) {
         setPage(0);
       }
       
       // Notify parent component about the filtered data for stats
-      if (onUserDataChange) {
+      if (onDriverDataChange) {
         const filteredResponse = {
           data: {
-            users: filteredUsers
+            drivers: filteredDrivers
           },
-          totalUsers: filteredUsers.length
+          totalDrivers: filteredDrivers.length
         };
-        onUserDataChange(filteredResponse);
+        onDriverDataChange(filteredResponse);
       }
     }
-  }, [getFilteredUsers, getPaginatedUsers, page, rowsPerPage, allUsers, onUserDataChange]);
+  }, [getFilteredDrivers, getPaginatedDrivers, page, rowsPerPage, allDrivers, onDriverDataChange]);
 
-  // Sort the users data based on order and orderBy
-  const sortedUsers = React.useMemo(() => {
-    if (!users || users.length === 0) return [];
+  // Sort the drivers data based on order and orderBy
+  const sortedDrivers = React.useMemo(() => {
+    if (!drivers || drivers.length === 0) return [];
     
-    const stabilizedUsers = users.map((user, index) => [user, index]);
+    const stabilizedDrivers = drivers.map((driver, index) => [driver, index]);
     
-    stabilizedUsers.sort((a, b) => {
-      const userA = a[0];
-      const userB = b[0];
-      
-      // Handle special sorting for name (which is concatenation of firstName and lastName)
-      if (orderBy === 'name') {
-        const nameA = `${userA.firstName} ${userA.lastName}`.toLowerCase();
-        const nameB = `${userB.firstName} ${userB.lastName}`.toLowerCase();
-        
-        if (order === 'asc') {
-          return nameA.localeCompare(nameB);
-        } else {
-          return nameB.localeCompare(nameA);
-        }
-      }
+    stabilizedDrivers.sort((a, b) => {
+      const driverA = a[0];
+      const driverB = b[0];
       
       // Handle date sorting
       if (orderBy === 'createdAt') {
-        const dateA = new Date(userA.createdAt);
-        const dateB = new Date(userB.createdAt);
+        const dateA = new Date(driverA.createdAt);
+        const dateB = new Date(driverB.createdAt);
         
         if (order === 'asc') {
           return dateA - dateB;
@@ -301,8 +304,8 @@ const UserTable = ({ searchTerm, filters, onUserDataChange }) => {
       }
       
       // Handle other fields
-      const valueA = userA[orderBy] || '';
-      const valueB = userB[orderBy] || '';
+      const valueA = driverA[orderBy] || '';
+      const valueB = driverB[orderBy] || '';
       
       if (order === 'asc') {
         return valueA < valueB ? -1 : valueA > valueB ? 1 : 0;
@@ -311,8 +314,8 @@ const UserTable = ({ searchTerm, filters, onUserDataChange }) => {
       }
     });
     
-    return stabilizedUsers.map((user) => user[0]);
-  }, [users, order, orderBy]);
+    return stabilizedDrivers.map((driver) => driver[0]);
+  }, [drivers, order, orderBy]);
 
   const handleRequestSort = (event, property) => {
     const isAsc = orderBy === property && order === 'asc';
@@ -329,42 +332,40 @@ const UserTable = ({ searchTerm, filters, onUserDataChange }) => {
     setPage(0);
   };
 
-  const handleMenuClick = (event, user) => {
+  const handleMenuClick = (event, driver) => {
     setAnchorEl(event.currentTarget);
-    setSelectedUser(user);
+    setSelectedDriver(driver);
   };
 
   const handleMenuClose = () => {
     setAnchorEl(null);
   };
 
-  const handleViewUser = (user) => {
-    const userToView = user || selectedUser;
-    if (!userToView) return;
+  const handleViewDriver = (driver) => {
+    const driverToView = driver || selectedDriver;
+    if (!driverToView) return;
     
-    setSelectedUserId(userToView.id);
-    setUserDetailsOpen(true);
+    setSelectedDriverId(driverToView.id);
+    setDriverDetailsOpen(true);
     
     // Close menu if it was triggered from the menu
-    if (!user) {
+    if (!driver) {
       handleMenuClose();
     }
   };
 
-
-
   const handleDeleteConfirm = async () => {
-    if (!selectedUser) return;
+    if (!selectedDriver) return;
     
     setDeleteLoading(true);
     
     try {
-      await userService.deleteUser(selectedUser.id);
+      await driverService.deleteDriver(selectedDriver.id);
       
       // Show success notification
       setSnackbar({
         open: true,
-        message: 'User deactivated successfully.',
+        message: 'Driver deleted successfully.',
         severity: 'success'
       });
       
@@ -372,14 +373,14 @@ const UserTable = ({ searchTerm, filters, onUserDataChange }) => {
       setDeleteDialogOpen(false);
       
       // Reload the data
-      fetchUsers();
+      fetchDrivers();
     } catch (err) {
-      console.error('Error deactivating user:', err);
+      console.error('Error deleting driver:', err);
       
       // Show error notification
       setSnackbar({
         open: true,
-        message: 'Failed to deactivate user. Please try again.',
+        message: 'Failed to delete driver. Please try again.',
         severity: 'error'
       });
       
@@ -394,74 +395,30 @@ const UserTable = ({ searchTerm, filters, onUserDataChange }) => {
     setDeleteDialogOpen(false);
   };
 
-  const handlePermanentDeleteClick = () => {
+  const handleDeleteClick = () => {
     handleMenuClose();
-    setPermanentDeleteDialogOpen(true);
-  };
-
-  const handlePermanentDeleteConfirm = async () => {
-    if (!selectedUser) return;
-    
-    setPermanentDeleteLoading(true);
-    
-    try {
-      await userService.permanentDeleteUser(selectedUser.id);
-      
-      // Show success notification
-      setSnackbar({
-        open: true,
-        message: 'User permanently deleted successfully',
-        severity: 'success'
-      });
-      
-      // Close the delete dialog
-      setPermanentDeleteDialogOpen(false);
-      
-      // Remove the user from the local state immediately for better UX
-      setAllUsers(prevUsers => prevUsers.filter(user => user.id !== selectedUser.id));
-      
-      // Reload the data to ensure consistency
-      fetchUsers();
-    } catch (err) {
-      console.error('Error permanently deleting user:', err);
-      
-      // Show error notification
-      setSnackbar({
-        open: true,
-        message: 'Failed to permanently delete user. Please try again.',
-        severity: 'error'
-      });
-      
-      // Close the delete dialog
-      setPermanentDeleteDialogOpen(false);
-    } finally {
-      setPermanentDeleteLoading(false);
-    }
-  };
-
-  const handlePermanentDeleteCancel = () => {
-    setPermanentDeleteDialogOpen(false);
+    setDeleteDialogOpen(true);
   };
 
   const handleToggleStatus = async () => {
-    if (!selectedUser) return;
+    if (!selectedDriver) return;
     
     try {
-      await userService.updateUser(selectedUser.id, {
-        active: !selectedUser.active
+      await driverService.updateDriverAvailability(selectedDriver.id, {
+        availability_status: selectedDriver.availability_status === 'online' ? 'offline' : 'online'
       });
-      fetchUsers(); // Reload the data
+      fetchDrivers(); // Reload the data
       handleMenuClose();
     } catch (err) {
-      console.error('Error updating user status:', err);
+      console.error('Error updating driver status:', err);
       // Show error notification
-      setError('Failed to update user status. Please try again.');
+      setError('Failed to update driver status. Please try again.');
       handleMenuClose();
     }
   };
 
   const handleRefresh = () => {
-    fetchUsers();
+    fetchDrivers();
   };
   
   const handleSnackbarClose = (event, reason) => {
@@ -469,12 +426,12 @@ const UserTable = ({ searchTerm, filters, onUserDataChange }) => {
     setSnackbar(prev => ({ ...prev, open: false }));
   };
 
-  const handleUserDetailsClose = () => {
-    setUserDetailsOpen(false);
-    setSelectedUserId(null);
+  const handleDriverDetailsClose = () => {
+    setDriverDetailsOpen(false);
+    setSelectedDriverId(null);
     
-    // Refresh users to show latest changes
-    fetchUsers();
+    // Refresh drivers to show latest changes
+    fetchDrivers();
   };
 
   const getStatusColor = (status) => {
@@ -485,15 +442,25 @@ const UserTable = ({ searchTerm, filters, onUserDataChange }) => {
     return status ? <CheckCircleIcon fontSize="small" /> : <BlockIcon fontSize="small" />;
   };
 
-  const getRoleColor = (role) => {
-    switch (role) {
-      case 'admin':
-        return '#e74c3c';
-      case 'driver':
-        return '#f39c12';
-      default:
-        return '#3498db';
-    }
+  const getVerificationColor = (isVerified) => {
+    return isVerified ? 'success' : 'warning';
+  };
+
+  const getVerificationIcon = (isVerified) => {
+    return isVerified ? <VerifiedUserIcon fontSize="small" /> : <PendingIcon fontSize="small" />;
+  };
+
+  const getVehicleTypeColor = (vehicleType) => {
+    const typeColors = {
+      'bike': '#2196f3',
+      'motorcycle': '#2196f3',
+      'car': '#4caf50',
+      'van': '#ff9800',
+      'truck': '#f44336',
+      'mini_truck': '#ff5722',
+      'pickup': '#795548'
+    };
+    return typeColors[vehicleType?.toLowerCase()] || '#9e9e9e';
   };
 
   // Format date using date-fns
@@ -526,17 +493,17 @@ const UserTable = ({ searchTerm, filters, onUserDataChange }) => {
       <TableContainer 
         component={Paper} 
         sx={{ maxHeight: 600 }}
-        aria-label="Users data table"
+        aria-label="Drivers data table"
         role="region"
-        aria-roledescription="User management table"
+        aria-roledescription="Driver management table"
       >
         {/* Accessibility: Add a caption for screen readers */}
         <caption style={{ position: 'absolute', left: '-9999px', height: '1px', overflow: 'hidden' }}>
-          Table of users with information including name, email, phone, role, status, and registration date
+          Table of drivers with information including name, email, phone, vehicle details, status, and registration date
         </caption>
         
-        <Table stickyHeader aria-label="users table" size="medium">
-          <UserTableHead
+        <Table stickyHeader aria-label="drivers table" size="medium">
+          <DriverTableHead
             order={order}
             orderBy={orderBy}
             onRequestSort={handleRequestSort}
@@ -544,18 +511,18 @@ const UserTable = ({ searchTerm, filters, onUserDataChange }) => {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={7} align="center" sx={{ py: 5 }}>
+                <TableCell colSpan={8} align="center" sx={{ py: 5 }}>
                   <CircularProgress />
                   <Typography variant="body1" sx={{ mt: 2 }}>
-                    Loading users...
+                    Loading drivers...
                   </Typography>
                 </TableCell>
               </TableRow>
-            ) : sortedUsers.length === 0 ? (
+            ) : sortedDrivers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} align="center" sx={{ py: 5 }}>
+                <TableCell colSpan={8} align="center" sx={{ py: 5 }}>
                   <Typography variant="body1">
-                    No users found
+                    No drivers found
                   </Typography>
                   <Button 
                     variant="outlined" 
@@ -568,63 +535,79 @@ const UserTable = ({ searchTerm, filters, onUserDataChange }) => {
                 </TableCell>
               </TableRow>
             ) : (
-              sortedUsers.map((user) => (
+              sortedDrivers.map((driver) => (
                 <TableRow
                   hover
-                  key={user.id}
+                  key={driver.id}
                   sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
-                  aria-label={`User ${user.firstName} ${user.lastName}`}
+                  aria-label={`Driver ${driver.name}`}
                 >
                   <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <Avatar 
                         sx={{ 
                           mr: 2, 
-                          bgcolor: getRoleColor(user.role),
+                          bgcolor: getVehicleTypeColor(driver.vehicleType),
                           width: 40,
                           height: 40
                         }}
                       >
-                        {user.firstName.charAt(0)}{user.lastName.charAt(0)}
+                        <CarIcon />
                       </Avatar>
                       <Box>
-                        <Typography variant="body1">{user.firstName} {user.lastName}</Typography>
-                        <Typography variant="body2" color="text.secondary">{user.id}</Typography>
+                        <Typography variant="body1">{driver.name}</Typography>
+                        <Typography variant="body2" color="text.secondary">{driver.id}</Typography>
                       </Box>
                     </Box>
                   </TableCell>
-                  <TableCell>{user.email}</TableCell>
-                  <TableCell>{user.phone}</TableCell>
+                  <TableCell>{driver.email}</TableCell>
+                  <TableCell>{driver.phone}</TableCell>
                   <TableCell>
                     <Chip 
-                      label={user.role} 
+                      label={driver.vehicleType} 
                       size="small"
                       sx={{
-                        bgcolor: getRoleColor(user.role),
+                        bgcolor: getVehicleTypeColor(driver.vehicleType),
                         color: 'white',
                         textTransform: 'capitalize'
                       }}
                     />
                   </TableCell>
                   <TableCell>
-                    <Chip 
-                      icon={getStatusIcon(user.active)}
-                      label={user.active ? 'Active' : 'Inactive'} 
-                      color={getStatusColor(user.active)} 
-                      size="small"
-                      variant="outlined"
-                      sx={{ textTransform: 'capitalize' }}
-                    />
+                    <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
+                      {driver.vehicleNumber}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {driver.vehicleCapacity}
+                    </Typography>
                   </TableCell>
-                  <TableCell>{formatDate(user.createdAt)}</TableCell>
+                  <TableCell>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                      <Chip 
+                        icon={getStatusIcon(driver.isActive)}
+                        label={driver.isActive ? 'Active' : 'Inactive'} 
+                        color={getStatusColor(driver.isActive)} 
+                        size="small"
+                        variant="outlined"
+                      />
+                      <Chip 
+                        icon={getVerificationIcon(driver.isVerified)}
+                        label={driver.isVerified ? 'Verified' : 'Pending'} 
+                        color={getVerificationColor(driver.isVerified)} 
+                        size="small"
+                        variant="filled"
+                      />
+                    </Box>
+                  </TableCell>
+                  <TableCell>{formatDate(driver.createdAt)}</TableCell>
                   <TableCell>
                     <Box sx={{ display: 'flex', gap: 1 }}>
                       <Tooltip title="View Details">
                         <IconButton
-                          aria-label="view user details"
+                          aria-label="view driver details"
                           size="small"
                           color="primary"
-                          onClick={() => handleViewUser(user)}
+                          onClick={() => handleViewDriver(driver)}
                         >
                           <VisibilityIcon fontSize="small" />
                         </IconButton>
@@ -632,7 +615,7 @@ const UserTable = ({ searchTerm, filters, onUserDataChange }) => {
                       <IconButton
                         aria-label="more options"
                         size="small"
-                        onClick={(e) => handleMenuClick(e, user)}
+                        onClick={(e) => handleMenuClick(e, driver)}
                       >
                         <MoreVertIcon />
                       </IconButton>
@@ -648,16 +631,16 @@ const UserTable = ({ searchTerm, filters, onUserDataChange }) => {
       <TablePagination
         rowsPerPageOptions={[5, 10, 25]}
         component="div"
-        count={totalUsers}
+        count={totalDrivers}
         rowsPerPage={rowsPerPage}
         page={page}
         onPageChange={handleChangePage}
         onRowsPerPageChange={handleChangeRowsPerPage}
         labelDisplayedRows={({ from, to, count }) => {
-          return `Showing ${from}–${to} of ${count !== -1 ? count : `more than ${to}`} users`;
+          return `Showing ${from}–${to} of ${count !== -1 ? count : `more than ${to}`} drivers`;
         }}
-        labelRowsPerPage="Users per page:"
-        aria-label="User table pagination"
+        labelRowsPerPage="Drivers per page:"
+        aria-label="Driver table pagination"
       />
 
       <Menu
@@ -666,79 +649,39 @@ const UserTable = ({ searchTerm, filters, onUserDataChange }) => {
         onClose={handleMenuClose}
       >
         <MenuItem onClick={handleToggleStatus}>
-          {selectedUser?.active ? (
+          {selectedDriver?.availability_status === 'online' ? (
             <>
               <BlockIcon fontSize="small" sx={{ mr: 1 }} />
-              Deactivate User
+              Set Offline
             </>
           ) : (
             <>
               <CheckCircleIcon fontSize="small" sx={{ mr: 1 }} />
-              Activate User
+              Set Online
             </>
           )}
         </MenuItem>
-        <MenuItem onClick={handlePermanentDeleteClick} sx={{ color: 'error.main' }}>
+        <MenuItem onClick={handleDeleteClick} sx={{ color: 'error.main' }}>
           <DeleteForeverIcon fontSize="small" sx={{ mr: 1 }} />
-          Permanently Delete
+          Delete Driver
         </MenuItem>
       </Menu>
 
       <DeleteConfirmationDialog
         open={deleteDialogOpen}
-        entityName="User"
-        confirmationText={selectedUser ? `Are you sure you want to deactivate ${selectedUser.firstName} ${selectedUser.lastName}? This will disable their account but keep their data.` : ''}
+        entityName="Driver"
+        confirmationText={selectedDriver ? `Are you sure you want to delete ${selectedDriver.name}? This action cannot be undone.` : ''}
         onCancel={handleDeleteCancel}
         onConfirm={handleDeleteConfirm}
         loading={deleteLoading}
       />
       
-      {/* Permanent Delete Confirmation Dialog */}
-      <Dialog open={permanentDeleteDialogOpen} onClose={handlePermanentDeleteCancel}>
-        <DialogTitle sx={{ color: 'error.main', display: 'flex', alignItems: 'center' }}>
-          <DeleteForeverIcon sx={{ mr: 1 }} />
-          Permanently Delete User
-        </DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            {selectedUser && (
-              <>
-                Are you sure you want to permanently delete <strong>{selectedUser.firstName} {selectedUser.lastName}</strong>?
-                <br /><br />
-                <strong>⚠️ WARNING:</strong> This action cannot be undone. All user data including:
-                <br />• Personal information
-                <br />• Order history  
-                <br />• Account settings
-                <br />• All associated records
-                <br /><br />
-                will be permanently removed from the system.
-              </>
-            )}
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handlePermanentDeleteCancel} disabled={permanentDeleteLoading}>
-            Cancel
-          </Button>
-          <Button 
-            onClick={handlePermanentDeleteConfirm}
-            color="error"
-            variant="contained"
-            disabled={permanentDeleteLoading}
-            startIcon={permanentDeleteLoading ? <CircularProgress size={16} /> : <DeleteForeverIcon />}
-          >
-            {permanentDeleteLoading ? 'Deleting...' : 'Permanently Delete'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-      
-      {/* User Details Modal */}
-      <UserDetailsModal
-        open={userDetailsOpen}
-        userId={selectedUserId}
-        onClose={handleUserDetailsClose}
+      {/* Driver Details Modal */}
+      <DriverDetailsModal
+        open={driverDetailsOpen}
+        driverId={selectedDriverId}
+        onClose={handleDriverDetailsClose}
       />
-      
       
       {/* Snackbar for notifications */}
       <Snackbar
@@ -759,15 +702,15 @@ const UserTable = ({ searchTerm, filters, onUserDataChange }) => {
   );
 };
 
-UserTable.propTypes = {
+DriverTable.propTypes = {
   searchTerm: PropTypes.string,
   filters: PropTypes.object,
-  onUserDataChange: PropTypes.func,
+  onDriverDataChange: PropTypes.func,
 };
 
-UserTable.defaultProps = {
+DriverTable.defaultProps = {
   searchTerm: '',
   filters: {},
 };
 
-export default UserTable;
+export default DriverTable;

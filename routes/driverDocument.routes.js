@@ -5,6 +5,7 @@ const adminDocumentController = require('../controllers/adminDocument.controller
 const { uploadDriverDocuments, handleUploadError } = require('../middleware/uploadMiddleware');
 const { validate } = require('../middleware/validate');
 const { protect } = require('../middleware/auth');
+const { normalizeDocumentQuery } = require('../middleware/normalizeQuery');
 const driverDocumentValidation = require('../validations/driverDocument.validation');
 
 // Upload handler with error handling
@@ -50,6 +51,7 @@ router.post('/driver-documents/:driverId/withdraw',
 // Admin Document Review Routes (require admin role)
 router.get('/admin/documents/pending',
   protect,
+  normalizeDocumentQuery,
   ...driverDocumentValidation.getPendingDocuments,
   validate,
   adminDocumentController.getPendingDocuments
@@ -72,6 +74,12 @@ router.post('/admin/documents/:driverId/reject',
 router.get('/admin/documents/statistics',
   protect,
   adminDocumentController.getDocumentStatistics
+);
+
+// Delete document route
+router.delete('/admin/driver-documents/:documentId',
+  protect,
+  adminDocumentController.deleteDocument
 );
 
 module.exports = router;

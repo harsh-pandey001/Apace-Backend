@@ -1,16 +1,36 @@
 const { DriverDocument, User, Driver } = require('../models');
 const { Op } = require('sequelize');
+const fs = require('fs');
+const path = require('path');
 
 const adminDocumentController = {
-  // Get all pending documents for admin review
+  // Get all documents for admin review (show all by default)
   getPendingDocuments: async (req, res) => {
     try {
-      const { page = 1, limit = 10, status = 'pending' } = req.query;
+      let { page = 1, limit = 10, status, search } = req.query;
       const offset = (page - 1) * limit;
+
+      // Normalize empty status to undefined to show all documents
+      if (status === '' || status === null || status === undefined) {
+        status = undefined;
+      }
 
       const whereClause = {};
       if (status && ['pending', 'verified', 'rejected'].includes(status)) {
         whereClause.status = status;
+      }
+
+      // Search functionality
+      let driverWhere = {};
+      if (search) {
+        const searchTerm = search.toLowerCase();
+        driverWhere = {
+          [Op.or]: [
+            { name: { [Op.like]: `%${searchTerm}%` } },
+            { email: { [Op.like]: `%${searchTerm}%` } },
+            { phone: { [Op.like]: `%${searchTerm}%` } }
+          ]
+        };
       }
 
       const { count, rows: documents } = await DriverDocument.findAndCountAll({
@@ -18,7 +38,9 @@ const adminDocumentController = {
         include: [{
           model: Driver,
           as: 'driverProfile',
-          attributes: ['id', 'name', 'email', 'phone', 'isActive', 'isVerified', 'vehicleType']
+          attributes: ['id', 'name', 'email', 'phone', 'isActive', 'isVerified', 'vehicleType'],
+          where: driverWhere,
+          required: false // Left join to include records even if driver is deleted
         }],
         order: [['uploaded_at', 'DESC']],
         limit: parseInt(limit),
@@ -30,7 +52,17 @@ const adminDocumentController = {
       // Format response data
       const formattedDocuments = documents.map(doc => ({
         id: doc.id,
-        driver: doc.driverProfile,
+        driver: doc.driverProfile || {
+          // Ghost mode for deleted drivers
+          id: doc.driver_id,
+          name: `Deleted Driver`,
+          email: null,
+          phone: null,
+          isActive: false,
+          isVerified: false,
+          vehicleType: null,
+          deleted: true
+        },
         status: doc.status,
         rejection_reason: doc.rejection_reason,
         uploaded_at: doc.uploaded_at,
@@ -38,19 +70,23 @@ const adminDocumentController = {
         documents: {
           driving_license: {
             uploaded: !!doc.driving_license_path,
-            path: doc.driving_license_path
+            path: doc.driving_license_path,
+            status: doc.driving_license_status || 'pending'
           },
           passport_photo: {
             uploaded: !!doc.passport_photo_path,
-            path: doc.passport_photo_path
+            path: doc.passport_photo_path,
+            status: doc.passport_photo_status || 'pending'
           },
           vehicle_rc: {
             uploaded: !!doc.vehicle_rc_path,
-            path: doc.vehicle_rc_path
+            path: doc.vehicle_rc_path,
+            status: doc.vehicle_rc_status || 'pending'
           },
           insurance_paper: {
             uploaded: !!doc.insurance_paper_path,
-            path: doc.insurance_paper_path
+            path: doc.insurance_paper_path,
+            status: doc.insurance_paper_status || 'pending'
           }
         }
       }));
@@ -280,6 +316,109 @@ const adminDocumentController = {
         message: 'Failed to retrieve document statistics',
         error: error.message
       });
+    }
+  },
+
+  // Delete a specific document
+  deleteDocument: async (req, res) => {
+    try {
+      const { documentId } = req.params;
+
+      // Find the document
+      const document = await DriverDocument.findByPk(documentId);
+      if (!document) {
+        return res.status(404).json({
+          success: false,
+          message: 'Document not found'
+        });
+      }
+
+      // Helper function to delete file from storage
+      const deleteFile = (filePath) => {
+        if (filePath && fs.existsSync(filePath)) {
+          try {
+            fs.unlinkSync(filePath);
+            console.log(`File deleted: ${filePath}`);
+          } catch (error) {
+            console.error(`Error deleting file ${filePath}:`, error);
+          }
+        }
+      };
+
+      // Delete associated files
+      if (document.driving_license_path) {
+        deleteFile(document.driving_license_path);
+      }
+      if (document.passport_photo_path) {
+        deleteFile(document.passport_photo_path);
+      }
+      if (document.vehicle_rc_path) {
+        deleteFile(document.vehicle_rc_path);
+      }
+      if (document.insurance_paper_path) {
+        deleteFile(document.insurance_paper_path);
+      }
+
+      // Delete the document record
+      await document.destroy();
+
+      // Update driver verification status after deletion
+      const driver = await Driver.findByPk(document.driver_id);
+      if (driver) {
+        await driver.update({
+          isVerified: false
+        });
+      }
+
+      res.status(200).json({
+        success: true,
+        message: 'Document deleted successfully',
+        data: {
+          id: documentId,
+          driver_id: document.driver_id
+        }
+      });
+
+    } catch (error) {
+      console.error('Delete document error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to delete document',
+        error: error.message
+      });
+    }
+  },
+
+  // Auto-verification logic based on individual document approvals
+  checkAndUpdateDriverVerification: async (driverId) => {
+    try {
+      const driverDocument = await DriverDocument.findOne({
+        where: { driver_id: driverId }
+      });
+
+      if (!driverDocument) {
+        return false;
+      }
+
+      // Check if all 4 documents are verified
+      const allDocumentsVerified = 
+        driverDocument.driving_license_status === 'verified' &&
+        driverDocument.passport_photo_status === 'verified' &&
+        driverDocument.vehicle_rc_status === 'verified' &&
+        driverDocument.insurance_paper_status === 'verified';
+
+      // Update driver verification status
+      const driver = await Driver.findByPk(driverId);
+      if (driver) {
+        await driver.update({
+          isVerified: allDocumentsVerified
+        });
+      }
+
+      return allDocumentsVerified;
+    } catch (error) {
+      console.error('Auto-verification check error:', error);
+      return false;
     }
   }
 };

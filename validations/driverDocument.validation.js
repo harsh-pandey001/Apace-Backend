@@ -28,7 +28,12 @@ const driverDocumentValidation = {
     query('status')
       .optional()
       .isIn(['pending', 'verified', 'rejected'])
-      .withMessage('Status must be one of: pending, verified, rejected')
+      .withMessage('Status must be one of: pending, verified, rejected'),
+    query('search')
+      .optional()
+      .isLength({ max: 100 })
+      .withMessage('Search term must not exceed 100 characters')
+      .trim()
   ],
 
   // Validation for document verification

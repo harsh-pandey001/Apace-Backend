@@ -1,13 +1,29 @@
 import api from './api';
 
 const driverDocumentService = {
-  // Get pending documents with pagination
-  getPendingDocuments: async (page = 1, limit = 10, status = 'pending') => {
+  // Get all documents with pagination (renamed from getPendingDocuments)
+  getPendingDocuments: async (page = 1, limit = 10, status = null, search = null) => {
     try {
-      const response = await api.get(`/admin/documents/pending?page=${page}&limit=${limit}&status=${status}`);
+      // Build query parameters dynamically
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString()
+      });
+      
+      // Only add status parameter if it's provided and not empty
+      if (status && status.trim() !== '') {
+        params.append('status', status);
+      }
+      
+      // Only add search parameter if it's provided and not empty
+      if (search && search.trim() !== '') {
+        params.append('search', search);
+      }
+      
+      const response = await api.get(`/admin/documents/pending?${params.toString()}`);
       return response.data;
     } catch (error) {
-      console.error('Error fetching pending documents:', error);
+      console.error('Error fetching documents:', error);
       throw error;
     }
   },
@@ -57,6 +73,17 @@ const driverDocumentService = {
       return response.data;
     } catch (error) {
       console.error('Error fetching document statistics:', error);
+      throw error;
+    }
+  },
+
+  // Delete a specific document
+  deleteDocument: async (documentId) => {
+    try {
+      const response = await api.delete(`/admin/driver-documents/${documentId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error deleting document:', error);
       throw error;
     }
   }
