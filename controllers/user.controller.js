@@ -1,5 +1,5 @@
 const { validationResult } = require('express-validator');
-const { User, Driver, Admin } = require('../models');
+const { User, Driver, Admin, DriverDocument } = require('../models');
 const { AppError } = require('../middleware/errorHandler');
 const { logger } = require('../utils/logger');
 
@@ -136,9 +136,15 @@ exports.getAllUsers = async (req, res, next) => {
       order: [['createdAt', 'DESC']]
     });
 
-    // Get drivers
+    // Get drivers with document status
     const drivers = await Driver.findAll({
       attributes: ['id', 'name', 'email', 'phone', 'isActive', 'isVerified', 'availability_status', 'vehicleType', 'vehicleCapacity', 'vehicleNumber', 'createdAt', 'updatedAt'],
+      include: [{
+        model: DriverDocument,
+        as: 'documents',
+        attributes: ['status', 'updated_at'],
+        required: false
+      }],
       order: [['createdAt', 'DESC']]
     });
 
@@ -149,14 +155,25 @@ exports.getAllUsers = async (req, res, next) => {
       role: 'user'
     }));
 
-    const formattedDrivers = drivers.map(driver => ({
-      ...driver.toJSON(),
-      userType: 'driver',
-      role: 'driver',
-      firstName: driver.name.split(' ')[0] || driver.name,
-      lastName: driver.name.split(' ').slice(1).join(' ') || '',
-      active: driver.isActive
-    }));
+    const formattedDrivers = drivers.map(driver => {
+      const driverData = driver.toJSON();
+      const documentStatus = driverData.documents?.status || 'pending';
+      
+      // Create clean driver object without the documents association
+      const { documents, ...cleanDriverData } = driverData;
+      
+      return {
+        ...cleanDriverData,
+        userType: 'driver',
+        role: 'driver',
+        firstName: driverData.name.split(' ')[0] || driverData.name,
+        lastName: driverData.name.split(' ').slice(1).join(' ') || '',
+        active: driverData.isActive,
+        // Use document status as the primary verification indicator
+        isVerified: documentStatus === 'verified',
+        documentVerificationStatus: documentStatus
+      };
+    });
 
     // Combine and sort by creation date
     const allUsers = [...formattedUsers, ...formattedDrivers].sort((a, b) => 
@@ -213,9 +230,15 @@ exports.getUser = async (req, res, next) => {
         userType: 'user'
       };
     } else {
-      // Check Driver table
+      // Check Driver table with document status
       user = await Driver.findByPk(userId, {
-        attributes: ['id', 'name', 'email', 'phone', 'isActive', 'isVerified', 'availability_status', 'vehicleType', 'vehicleCapacity', 'vehicleNumber', 'createdAt', 'updatedAt']
+        attributes: ['id', 'name', 'email', 'phone', 'isActive', 'isVerified', 'availability_status', 'vehicleType', 'vehicleCapacity', 'vehicleNumber', 'createdAt', 'updatedAt'],
+        include: [{
+          model: DriverDocument,
+          as: 'documents',
+          attributes: ['status', 'updated_at', 'rejection_reason'],
+          required: false
+        }]
       });
       
       if (user) {
@@ -224,8 +247,13 @@ exports.getUser = async (req, res, next) => {
         
         // Format driver data to match user structure
         const driverData = user.toJSON();
+        const documentStatus = driverData.documents?.status || 'pending';
+        
+        // Create clean user object without the documents association
+        const { documents, ...cleanDriverData } = driverData;
+        
         user = {
-          ...driverData,
+          ...cleanDriverData,
           firstName: driverData.name.split(' ')[0] || driverData.name,
           lastName: driverData.name.split(' ').slice(1).join(' ') || '',
           active: driverData.isActive,
@@ -237,7 +265,9 @@ exports.getUser = async (req, res, next) => {
             vehicleCapacity: driverData.vehicleCapacity,
             vehicleNumber: driverData.vehicleNumber
           },
-          isVerified: driverData.isVerified,
+          // Use document status as primary verification indicator
+          isVerified: documentStatus === 'verified',
+          documentVerificationStatus: documentStatus,
           availability_status: driverData.availability_status
         };
       } else {

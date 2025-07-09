@@ -20,12 +20,6 @@ export const ScreenReaderOnly = ({ id, children }) => (
 );
 
 /**
- * A utility function to generate aria-labelledby with a prefix
- * to ensure unique IDs throughout the application
- */
-export const generateUniqueId = (base) => `apace-${base}-${Math.random().toString(36).substring(2, 9)}`;
-
-/**
  * A utility function to skip navigation for keyboard users
  * Adds a visually hidden link that becomes visible on focus
  */
@@ -59,35 +53,6 @@ export const SkipLink = ({ target }) => (
 );
 
 /**
- * Accessibility helpers for commonly used ARIA attributes and patterns
- */
-export const a11yProps = {
-  // For tabs
-  tab: (index) => ({
-    id: `tab-${index}`,
-    'aria-controls': `tabpanel-${index}`,
-  }),
-  
-  // For tab panels
-  tabPanel: (index) => ({
-    id: `tabpanel-${index}`,
-    'aria-labelledby': `tab-${index}`,
-  }),
-  
-  // For accordions
-  accordion: (index) => ({
-    id: `accordion-${index}`,
-    'aria-controls': `accordion-content-${index}`,
-  }),
-  
-  // For accordion panels
-  accordionPanel: (index) => ({
-    id: `accordion-content-${index}`,
-    'aria-labelledby': `accordion-${index}`,
-  }),
-};
-
-/**
  * Adds aria-live attributes for dynamic content regions
  * - assertive: Announces changes immediately (high priority)
  * - polite: Announces changes when user is idle (low priority)
@@ -99,10 +64,10 @@ export const LiveRegion = ({ children, mode = 'polite' }) => (
   </div>
 );
 
-export default {
+const AccessibilityUtils = {
   ScreenReaderOnly,
-  generateUniqueId,
   SkipLink,
-  a11yProps,
   LiveRegion,
 };
+
+export default AccessibilityUtils;

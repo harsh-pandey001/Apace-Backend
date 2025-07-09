@@ -29,8 +29,6 @@ import {
   DialogActions,
 } from '@mui/material';
 import {
-  Edit as EditIcon,
-  Delete as DeleteIcon,
   DeleteForever as DeleteForeverIcon,
   MoreVert as MoreVertIcon,
   Visibility as VisibilityIcon,
@@ -116,7 +114,6 @@ const UserTable = ({ searchTerm, filters, onUserDataChange }) => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [totalUsers, setTotalUsers] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
   
   // State for action menu
   const [anchorEl, setAnchorEl] = useState(null);
@@ -255,7 +252,6 @@ const UserTable = ({ searchTerm, filters, onUserDataChange }) => {
       const filteredUsers = getFilteredUsers();
       setUsers(getPaginatedUsers());
       setTotalUsers(filteredUsers.length);
-      setTotalPages(Math.ceil(filteredUsers.length / rowsPerPage));
       
       // Reset to first page if current page exceeds available pages
       const maxPages = Math.ceil(filteredUsers.length / rowsPerPage);
@@ -362,10 +358,6 @@ const UserTable = ({ searchTerm, filters, onUserDataChange }) => {
   };
 
 
-  const handleDeleteClick = () => {
-    handleMenuClose();
-    setDeleteDialogOpen(true);
-  };
 
   const handleDeleteConfirm = async () => {
     if (!selectedUser) return;

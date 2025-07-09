@@ -119,6 +119,11 @@ const adminDocumentController = {
         updated_at: new Date()
       });
 
+      // Also update the driver's isVerified status
+      await driver.update({
+        isVerified: true
+      });
+
       res.status(200).json({
         success: true,
         message: 'Documents verified successfully',
@@ -187,6 +192,11 @@ const adminDocumentController = {
         status: 'rejected',
         rejection_reason: rejectionReason.trim(),
         updated_at: new Date()
+      });
+
+      // Also update the driver's isVerified status
+      await driver.update({
+        isVerified: false
       });
 
       res.status(200).json({
