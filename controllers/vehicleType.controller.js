@@ -3,6 +3,7 @@ const { Op } = require('sequelize');
 const { VehicleType, Shipment } = require('../models');
 const { AppError } = require('../middleware/errorHandler');
 const { logger } = require('../utils/logger');
+const { clearCache } = require('../utils/vehicleTypeValidator');
 
 // Helper function for pagination
 const getPagination = (req) => {
@@ -204,6 +205,9 @@ exports.createVehicleType = async (req, res, next) => {
       iconKey: iconKey || 'default'
     });
     
+    // Clear cache since we added a new vehicle type
+    clearCache();
+    
     res.status(201).json({
       success: true,
       message: 'Vehicle type created successfully',
@@ -265,6 +269,9 @@ exports.updateVehicleType = async (req, res, next) => {
     
     // Update vehicle type
     await vehicleType.update(updateData);
+    
+    // Clear cache since we updated a vehicle type
+    clearCache();
     
     // Reload to get updated data
     await vehicleType.reload();
@@ -335,6 +342,9 @@ exports.deleteVehicleType = async (req, res, next) => {
     
     // Permanently delete from database
     await vehicleType.destroy();
+    
+    // Clear cache since we deleted a vehicle type
+    clearCache();
     
     res.json({
       success: true,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Box,
   Paper,
@@ -29,6 +29,10 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
+  TableSortLabel,
+  Card,
+  CardContent,
+  Divider,
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -41,6 +45,11 @@ import {
   Speed as SpeedIcon,
   Scale as WeightIcon,
   Sync as SyncIcon,
+  Search as SearchIcon,
+  FilterList as FilterIcon,
+  Clear as ClearIcon,
+  ArrowUpward as ArrowUpIcon,
+  ArrowDownward as ArrowDownIcon,
 } from '@mui/icons-material';
 import { vehicleService } from '../services/vehicleService';
 
@@ -85,6 +94,65 @@ const VehiclePricing = () => {
 
   // Icon options for dropdown (fetched dynamically)
   const [iconOptions, setIconOptions] = useState([]);
+
+  // Enhanced search, filter, and sort states
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filters, setFilters] = useState({
+    vehicleType: '',
+    weightRange: '',
+    priceRange: ''
+  });
+  const [sortConfig, setSortConfig] = useState({
+    key: 'capacity',
+    direction: 'asc'
+  });
+
+  // Utility functions for enhanced search and filtering
+  const parseCapacityValue = (capacity) => {
+    if (!capacity) return 0;
+    const numValue = parseFloat(capacity.toString().replace(/\s*kg\s*$/i, '').trim());
+    return isNaN(numValue) ? 0 : numValue;
+  };
+
+  const getUniqueVehicleTypes = () => {
+    const types = [...new Set(vehicleTypes.map(v => v.vehicleType))];
+    return types.sort();
+  };
+
+  const getWeightRanges = () => [
+    { label: 'All Weights', value: '' },
+    { label: '0-100 kg', value: '0-100' },
+    { label: '100-500 kg', value: '100-500' },
+    { label: '500-1000 kg', value: '500-1000' },
+    { label: '1000+ kg', value: '1000+' }
+  ];
+
+  const getPriceRanges = () => [
+    { label: 'All Prices', value: '' },
+    { label: 'Under ₹100', value: '0-100' },
+    { label: '₹100-500', value: '100-500' },
+    { label: '₹500-1000', value: '500-1000' },
+    { label: '₹1000+', value: '1000+' }
+  ];
+
+  // Debounced search handler
+  const useDebounce = (value, delay) => {
+    const [debouncedValue, setDebouncedValue] = useState(value);
+
+    useEffect(() => {
+      const handler = setTimeout(() => {
+        setDebouncedValue(value);
+      }, delay);
+
+      return () => {
+        clearTimeout(handler);
+      };
+    }, [value, delay]);
+
+    return debouncedValue;
+  };
+
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   // Validation functions
   const validateCapacity = (value) => {
@@ -142,6 +210,120 @@ const VehiclePricing = () => {
     
     // Format to 2 decimal places
     return numValue.toFixed(2);
+  };
+
+  // Filtering and sorting logic
+  const filteredAndSortedVehicles = useMemo(() => {
+    let filtered = [...vehicleTypes];
+
+    // Apply search filter
+    if (debouncedSearchTerm) {
+      const searchLower = debouncedSearchTerm.toLowerCase();
+      filtered = filtered.filter(vehicle => {
+        const capacityMatch = vehicle.capacity?.toLowerCase().includes(searchLower);
+        const typeMatch = vehicle.vehicleType?.toLowerCase().includes(searchLower);
+        const labelMatch = vehicle.label?.toLowerCase().includes(searchLower);
+        const priceMatch = vehicle.basePrice?.toString().includes(searchLower) ||
+                          vehicle.pricePerKm?.toString().includes(searchLower) ||
+                          vehicle.startingPrice?.toString().includes(searchLower);
+        return capacityMatch || typeMatch || labelMatch || priceMatch;
+      });
+    }
+
+    // Apply vehicle type filter
+    if (filters.vehicleType) {
+      filtered = filtered.filter(vehicle => vehicle.vehicleType === filters.vehicleType);
+    }
+
+    // Apply weight range filter
+    if (filters.weightRange) {
+      const [min, max] = filters.weightRange.split('-').map(v => v === '+' ? Infinity : parseFloat(v));
+      filtered = filtered.filter(vehicle => {
+        const capacity = parseCapacityValue(vehicle.capacity);
+        if (max === Infinity) {
+          return capacity >= min;
+        }
+        return capacity >= min && capacity <= max;
+      });
+    }
+
+    // Apply price range filter
+    if (filters.priceRange) {
+      const [min, max] = filters.priceRange.split('-').map(v => v === '+' ? Infinity : parseFloat(v));
+      filtered = filtered.filter(vehicle => {
+        const basePrice = parseFloat(vehicle.basePrice);
+        if (max === Infinity) {
+          return basePrice >= min;
+        }
+        return basePrice >= min && basePrice <= max;
+      });
+    }
+
+    // Apply sorting
+    if (sortConfig.key) {
+      filtered.sort((a, b) => {
+        let aValue, bValue;
+        
+        if (sortConfig.key === 'capacity') {
+          aValue = parseCapacityValue(a.capacity);
+          bValue = parseCapacityValue(b.capacity);
+        } else if (sortConfig.key === 'basePrice' || sortConfig.key === 'pricePerKm' || sortConfig.key === 'startingPrice') {
+          aValue = parseFloat(a[sortConfig.key]);
+          bValue = parseFloat(b[sortConfig.key]);
+        } else {
+          aValue = a[sortConfig.key];
+          bValue = b[sortConfig.key];
+        }
+
+        if (aValue < bValue) {
+          return sortConfig.direction === 'asc' ? -1 : 1;
+        }
+        if (aValue > bValue) {
+          return sortConfig.direction === 'asc' ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+
+    return filtered;
+  }, [vehicleTypes, debouncedSearchTerm, filters, sortConfig]);
+
+  // Handle sorting
+  const handleSort = (key) => {
+    setSortConfig(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+    }));
+  };
+
+  // Handle filter changes
+  const handleFilterChange = (filterType, value) => {
+    setFilters(prev => ({
+      ...prev,
+      [filterType]: value
+    }));
+    setPage(0); // Reset to first page when filtering
+  };
+
+  // Handle search change
+  const handleSearchChange = (value) => {
+    setSearchTerm(value);
+    setPage(0); // Reset to first page when searching
+  };
+
+  // Clear all filters
+  const clearAllFilters = () => {
+    setSearchTerm('');
+    setFilters({
+      vehicleType: '',
+      weightRange: '',
+      priceRange: ''
+    });
+    setSortConfig({
+      key: 'capacity',
+      direction: 'asc'
+    });
+    setPage(0);
   };
 
   // Fetch vehicle types
@@ -514,6 +696,160 @@ const VehiclePricing = () => {
         </Grid>
       </Grid>
 
+      {/* Search and Filter Controls */}
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <FilterIcon color="primary" />
+            Search & Filter Controls
+          </Typography>
+          
+          {/* Search Bar */}
+          <Box sx={{ mb: 3 }}>
+            <TextField
+              fullWidth
+              placeholder="Search by vehicle type, capacity, or price..."
+              value={searchTerm}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon color="action" />
+                  </InputAdornment>
+                ),
+                endAdornment: searchTerm && (
+                  <InputAdornment position="end">
+                    <IconButton
+                      aria-label="clear search"
+                      onClick={() => handleSearchChange('')}
+                      edge="end"
+                      size="small"
+                    >
+                      <ClearIcon />
+                    </IconButton>
+                  </InputAdornment>
+                )
+              }}
+              variant="outlined"
+              size="small"
+            />
+          </Box>
+
+          {/* Filter Controls */}
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={12} sm={6} md={3}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Vehicle Type</InputLabel>
+                <Select
+                  value={filters.vehicleType}
+                  label="Vehicle Type"
+                  onChange={(e) => handleFilterChange('vehicleType', e.target.value)}
+                >
+                  <MenuItem value="">All Types</MenuItem>
+                  {getUniqueVehicleTypes().map(type => (
+                    <MenuItem key={type} value={type}>{type}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            
+            <Grid item xs={12} sm={6} md={3}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Weight Range</InputLabel>
+                <Select
+                  value={filters.weightRange}
+                  label="Weight Range"
+                  onChange={(e) => handleFilterChange('weightRange', e.target.value)}
+                >
+                  {getWeightRanges().map(range => (
+                    <MenuItem key={range.value} value={range.value}>{range.label}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            
+            <Grid item xs={12} sm={6} md={3}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Price Range</InputLabel>
+                <Select
+                  value={filters.priceRange}
+                  label="Price Range"
+                  onChange={(e) => handleFilterChange('priceRange', e.target.value)}
+                >
+                  {getPriceRanges().map(range => (
+                    <MenuItem key={range.value} value={range.value}>{range.label}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            
+            <Grid item xs={12} sm={6} md={3}>
+              <Button
+                variant="outlined"
+                color="secondary"
+                onClick={clearAllFilters}
+                startIcon={<ClearIcon />}
+                fullWidth
+                size="small"
+              >
+                Clear Filters
+              </Button>
+            </Grid>
+          </Grid>
+
+          {/* Active Filter Summary */}
+          {(debouncedSearchTerm || filters.vehicleType || filters.weightRange || filters.priceRange) && (
+            <Box sx={{ mt: 2, pt: 2 }}>
+              <Divider sx={{ mb: 2 }} />
+              <Typography variant="body2" color="textSecondary" gutterBottom>
+                Active Filters: 
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                {debouncedSearchTerm && (
+                  <Chip
+                    label={`Search: "${debouncedSearchTerm}"`}
+                    onDelete={() => handleSearchChange('')}
+                    size="small"
+                    color="primary"
+                    variant="outlined"
+                  />
+                )}
+                {filters.vehicleType && (
+                  <Chip
+                    label={`Type: ${filters.vehicleType}`}
+                    onDelete={() => handleFilterChange('vehicleType', '')}
+                    size="small"
+                    color="primary"
+                    variant="outlined"
+                  />
+                )}
+                {filters.weightRange && (
+                  <Chip
+                    label={`Weight: ${getWeightRanges().find(r => r.value === filters.weightRange)?.label}`}
+                    onDelete={() => handleFilterChange('weightRange', '')}
+                    size="small"
+                    color="primary"
+                    variant="outlined"
+                  />
+                )}
+                {filters.priceRange && (
+                  <Chip
+                    label={`Price: ${getPriceRanges().find(r => r.value === filters.priceRange)?.label}`}
+                    onDelete={() => handleFilterChange('priceRange', '')}
+                    size="small"
+                    color="primary"
+                    variant="outlined"
+                  />
+                )}
+              </Box>
+              <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
+                Showing {filteredAndSortedVehicles.length} of {vehicleTypes.length} vehicle types
+              </Typography>
+            </Box>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Vehicle Types Table */}
       <Paper sx={{ width: '100%', overflow: 'hidden' }}>
         <TableContainer>
@@ -523,10 +859,62 @@ const VehiclePricing = () => {
                 <TableCell><strong>Vehicle Type</strong></TableCell>
                 <TableCell><strong>Label</strong></TableCell>
                 <TableCell><strong>Icon</strong></TableCell>
-                <TableCell><strong>Capacity</strong></TableCell>
-                <TableCell><strong>Base Price</strong></TableCell>
-                <TableCell><strong>Price per Km</strong></TableCell>
-                <TableCell><strong>Starting Price</strong></TableCell>
+                <TableCell>
+                  <TableSortLabel
+                    active={sortConfig.key === 'capacity'}
+                    direction={sortConfig.key === 'capacity' ? sortConfig.direction : 'asc'}
+                    onClick={() => handleSort('capacity')}
+                  >
+                    <strong>Capacity (Weight)</strong>
+                    {sortConfig.key === 'capacity' && (
+                      <Box component="span" sx={{ ml: 1, display: 'inline-flex', alignItems: 'center' }}>
+                        {sortConfig.direction === 'asc' ? <ArrowUpIcon fontSize="small" /> : <ArrowDownIcon fontSize="small" />}
+                      </Box>
+                    )}
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell>
+                  <TableSortLabel
+                    active={sortConfig.key === 'basePrice'}
+                    direction={sortConfig.key === 'basePrice' ? sortConfig.direction : 'asc'}
+                    onClick={() => handleSort('basePrice')}
+                  >
+                    <strong>Base Price</strong>
+                    {sortConfig.key === 'basePrice' && (
+                      <Box component="span" sx={{ ml: 1, display: 'inline-flex', alignItems: 'center' }}>
+                        {sortConfig.direction === 'asc' ? <ArrowUpIcon fontSize="small" /> : <ArrowDownIcon fontSize="small" />}
+                      </Box>
+                    )}
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell>
+                  <TableSortLabel
+                    active={sortConfig.key === 'pricePerKm'}
+                    direction={sortConfig.key === 'pricePerKm' ? sortConfig.direction : 'asc'}
+                    onClick={() => handleSort('pricePerKm')}
+                  >
+                    <strong>Price per Km</strong>
+                    {sortConfig.key === 'pricePerKm' && (
+                      <Box component="span" sx={{ ml: 1, display: 'inline-flex', alignItems: 'center' }}>
+                        {sortConfig.direction === 'asc' ? <ArrowUpIcon fontSize="small" /> : <ArrowDownIcon fontSize="small" />}
+                      </Box>
+                    )}
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell>
+                  <TableSortLabel
+                    active={sortConfig.key === 'startingPrice'}
+                    direction={sortConfig.key === 'startingPrice' ? sortConfig.direction : 'asc'}
+                    onClick={() => handleSort('startingPrice')}
+                  >
+                    <strong>Starting Price</strong>
+                    {sortConfig.key === 'startingPrice' && (
+                      <Box component="span" sx={{ ml: 1, display: 'inline-flex', alignItems: 'center' }}>
+                        {sortConfig.direction === 'asc' ? <ArrowUpIcon fontSize="small" /> : <ArrowDownIcon fontSize="small" />}
+                      </Box>
+                    )}
+                  </TableSortLabel>
+                </TableCell>
                 <TableCell><strong>Status</strong></TableCell>
                 <TableCell><strong>Actions</strong></TableCell>
               </TableRow>
@@ -544,7 +932,7 @@ const VehiclePricing = () => {
                   </TableRow>
                 ))
               ) : (
-                vehicleTypes
+                filteredAndSortedVehicles
                   .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                   .map((vehicle) => (
                     <TableRow key={vehicle.id} hover>
@@ -732,7 +1120,7 @@ const VehiclePricing = () => {
           <TablePagination
             rowsPerPageOptions={[5, 10, 25]}
             component="div"
-            count={vehicleTypes.length}
+            count={filteredAndSortedVehicles.length}
             rowsPerPage={rowsPerPage}
             page={page}
             onPageChange={handleChangePage}

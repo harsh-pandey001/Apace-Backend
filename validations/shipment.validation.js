@@ -1,4 +1,5 @@
 const { body } = require('express-validator');
+const { isValidVehicleType, getValidVehicleTypesMessage } = require('../utils/vehicleTypeValidator');
 
 exports.createShipmentValidation = [
   body('pickupAddress')
@@ -110,8 +111,15 @@ exports.createGuestShipmentValidation = [
   
   body('vehicleType')
     .notEmpty()
-    .isIn(['bike', 'car', 'van', 'truck', 'mini_truck'])
-    .withMessage('Vehicle type is required and must be one of: bike, car, van, truck, mini_truck'),
+    .withMessage('Vehicle type is required')
+    .custom(async (value) => {
+      const isValid = await isValidVehicleType(value);
+      if (!isValid) {
+        const validTypes = await getValidVehicleTypesMessage();
+        throw new Error(`Vehicle type must be one of: ${validTypes}`);
+      }
+      return true;
+    }),
   
   body('guestName')
     .notEmpty()
@@ -232,14 +240,31 @@ exports.createUnifiedShipmentValidation = [
   body('vehicleType')
     .if(body('userType').equals('guest'))
     .notEmpty()
-    .isIn(['bike', 'car', 'van', 'truck', 'mini_truck'])
-    .withMessage('Vehicle type is required for guest bookings and must be one of: bike, car, van, truck, mini_truck'),
+    .withMessage('Vehicle type is required for guest bookings')
+    .custom(async (value, { req }) => {
+      if (req.body.userType === 'guest') {
+        const isValid = await isValidVehicleType(value);
+        if (!isValid) {
+          const validTypes = await getValidVehicleTypesMessage();
+          throw new Error(`Vehicle type is required for guest bookings and must be one of: ${validTypes}`);
+        }
+      }
+      return true;
+    }),
   
   body('vehicleType')
     .if(body('userType').equals('authenticated'))
     .optional()
-    .isIn(['bike', 'car', 'van', 'truck', 'mini_truck'])
-    .withMessage('Vehicle type must be one of: bike, car, van, truck, mini_truck'),
+    .custom(async (value, { req }) => {
+      if (req.body.userType === 'authenticated' && value) {
+        const isValid = await isValidVehicleType(value);
+        if (!isValid) {
+          const validTypes = await getValidVehicleTypesMessage();
+          throw new Error(`Vehicle type must be one of: ${validTypes}`);
+        }
+      }
+      return true;
+    }),
   
   // Guest fields - required for guest users
   body('guestName')

@@ -1,4 +1,5 @@
 const { body } = require('express-validator');
+const { isValidVehicleType, getValidVehicleTypesMessage } = require('../utils/vehicleTypeValidator');
 
 exports.validateDriverSignup = [
   body('phone')
@@ -26,7 +27,15 @@ exports.validateDriverSignup = [
     .isString()
     .withMessage('Vehicle type must be a string')
     .isLength({ max: 20 })
-    .withMessage('Vehicle type must be maximum 20 characters'),
+    .withMessage('Vehicle type must be maximum 20 characters')
+    .custom(async (value) => {
+      const isValid = await isValidVehicleType(value);
+      if (!isValid) {
+        const validTypes = await getValidVehicleTypesMessage();
+        throw new Error(`Vehicle type must be one of: ${validTypes}`);
+      }
+      return true;
+    }),
   
   body('vehicleCapacity')
     .notEmpty()
@@ -77,7 +86,15 @@ exports.validateDriverSignupNoOTP = [
     .isString()
     .withMessage('Vehicle type must be a string')
     .isLength({ max: 20 })
-    .withMessage('Vehicle type must be maximum 20 characters'),
+    .withMessage('Vehicle type must be maximum 20 characters')
+    .custom(async (value) => {
+      const isValid = await isValidVehicleType(value);
+      if (!isValid) {
+        const validTypes = await getValidVehicleTypesMessage();
+        throw new Error(`Vehicle type must be one of: ${validTypes}`);
+      }
+      return true;
+    }),
   
   body('vehicleCapacity')
     .notEmpty()
@@ -123,7 +140,17 @@ exports.validateDriverProfileUpdate = [
     .isString()
     .withMessage('Vehicle type must be a string')
     .isLength({ max: 20 })
-    .withMessage('Vehicle type must be maximum 20 characters'),
+    .withMessage('Vehicle type must be maximum 20 characters')
+    .custom(async (value) => {
+      if (value) {
+        const isValid = await isValidVehicleType(value);
+        if (!isValid) {
+          const validTypes = await getValidVehicleTypesMessage();
+          throw new Error(`Vehicle type must be one of: ${validTypes}`);
+        }
+      }
+      return true;
+    }),
   
   body('vehicleCapacity')
     .optional()
