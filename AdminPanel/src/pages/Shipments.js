@@ -37,6 +37,7 @@ import {
   Person as PersonIcon,
   Email as EmailIcon,
   Phone as PhoneIcon,
+  PersonAdd as GuestIcon,
   Visibility as VisibilityIcon,
   Delete as DeleteIcon,
   Assignment as AssignmentIcon
@@ -142,7 +143,10 @@ function Shipments() {
         s.deliveryAddress.toLowerCase().includes(query) ||
         (s.user && s.user.firstName && s.user.firstName.toLowerCase().includes(query)) ||
         (s.user && s.user.lastName && s.user.lastName.toLowerCase().includes(query)) ||
-        (s.user && s.user.email && s.user.email.toLowerCase().includes(query))
+        (s.user && s.user.email && s.user.email.toLowerCase().includes(query)) ||
+        (s.guestName && s.guestName.toLowerCase().includes(query)) ||
+        (s.guestEmail && s.guestEmail.toLowerCase().includes(query)) ||
+        (s.guestPhone && s.guestPhone.toLowerCase().includes(query))
       );
     }
 
@@ -400,6 +404,22 @@ function Shipments() {
           <Card>
             <CardContent>
               <Typography color="text.secondary" gutterBottom>
+                Guest Bookings
+              </Typography>
+              <Typography variant="h4">
+                {shipments.filter(s => s.userType === 'guest' || (!s.user && (s.guestName || s.guestEmail || s.guestPhone))).length}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+
+      {/* Revenue Card */}
+      <Grid container spacing={3} sx={{ mb: 3 }}>
+        <Grid item xs={12} sm={6} md={3}>
+          <Card>
+            <CardContent>
+              <Typography color="text.secondary" gutterBottom>
                 Total Revenue
               </Typography>
               <Typography variant="h4">
@@ -516,8 +536,54 @@ function Shipments() {
                         </Box>
                       </TableCell>
                       <TableCell>
-                        {shipment.user ? (
+                        {shipment.userType === 'guest' || (!shipment.user && (shipment.guestName || shipment.guestEmail || shipment.guestPhone)) ? (
                           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
+                              <Chip 
+                                icon={<GuestIcon />}
+                                label="Guest User" 
+                                color="secondary" 
+                                size="small" 
+                                variant="outlined"
+                              />
+                            </Box>
+                            {shipment.guestName && (
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                <PersonIcon fontSize="small" />
+                                <Typography variant="body2">
+                                  {shipment.guestName}
+                                </Typography>
+                              </Box>
+                            )}
+                            {shipment.guestEmail && (
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                <EmailIcon fontSize="small" />
+                                <Typography variant="body2" noWrap sx={{ maxWidth: 150 }}>
+                                  {shipment.guestEmail}
+                                </Typography>
+                              </Box>
+                            )}
+                            {shipment.guestPhone && (
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                <PhoneIcon fontSize="small" />
+                                <Typography variant="body2">{shipment.guestPhone}</Typography>
+                              </Box>
+                            )}
+                            {!shipment.guestName && !shipment.guestEmail && !shipment.guestPhone && (
+                              <Typography variant="body2" color="text.secondary">Guest (No contact info)</Typography>
+                            )}
+                          </Box>
+                        ) : shipment.user ? (
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
+                              <Chip 
+                                icon={<PersonIcon />}
+                                label="Registered User" 
+                                color="primary" 
+                                size="small" 
+                                variant="outlined"
+                              />
+                            </Box>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                               <PersonIcon fontSize="small" />
                               <Typography variant="body2">

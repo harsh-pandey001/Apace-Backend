@@ -403,7 +403,7 @@ const DriverDocuments = () => {
                         <Box display="flex" alignItems="center" gap={1}>
                           <Typography variant="body2" fontWeight={500}>
                             {document.driver?.deleted ? 'Deleted Driver' : 
-                             `${document.driver?.firstName || 'N/A'} ${document.driver?.lastName || ''}`}
+                             (document.driver?.name || 'N/A')}
                           </Typography>
                           {document.driver?.deleted && (
                             <Chip 
@@ -564,7 +564,7 @@ const DriverDocuments = () => {
                             onClick={() => handleDeleteDocument(
                               document.id,
                               document.driver?.deleted ? 'Deleted Driver' : 
-                              `${document.driver?.firstName || 'N/A'} ${document.driver?.lastName || ''}`
+                              (document.driver?.name || 'N/A')
                             )}
                           >
                             <DeleteIcon />

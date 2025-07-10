@@ -258,7 +258,7 @@ const DocumentReviewModal = ({
                 <Grid item xs={12} sm={6}>
                   <Typography variant="body2" color="text.secondary">Name</Typography>
                   <Typography variant="body1" fontWeight={500}>
-                    {document.driver?.firstName} {document.driver?.lastName}
+                    {document.driver?.name || 'N/A'}
                   </Typography>
                 </Grid>
                 <Grid item xs={12} sm={6}>
