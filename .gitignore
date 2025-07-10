@@ -37,6 +37,20 @@ coverage/
 .temp/
 tmp/
 
+# Test files and development utilities
+test-*.js
+test-*.html
+**/test-*
+debug-*.js
+create-admin-manually.js
+check-phone.js
+get-admin-token.js
+verify-currency-changes.js
+
+# Temporary documentation files
+**/PIE_CHART_OPTIMIZATION.md
+**/FILTER_TEST.md
+**/CLIENT_SIDE_FILTERING.md
 
 # Misc
 .npm

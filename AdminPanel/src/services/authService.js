@@ -27,23 +27,23 @@ const authService = {
    */
   verifyOtp: async (phone, otp) => {
     try {
-      console.log('Verifying OTP with parameters:', { phone, otp });
+      // Verifying OTP with parameters
       const response = await api.post('/auth/verify-otp', { phone, otp });
-      console.log('OTP verification response:', response.data);
+      // OTP verification successful
       
       // Store tokens in localStorage
       if (response.data.token) {
-        console.log('Storing token in localStorage');
+        // Storing token in localStorage
         localStorage.setItem('auth_token', response.data.token);
       } else {
-        console.warn('No token in response');
+        // No token in response
       }
       
       if (response.data.refreshToken) {
-        console.log('Storing refresh token in localStorage');
+        // Storing refresh token in localStorage
         localStorage.setItem('refresh_token', response.data.refreshToken);
       } else {
-        console.warn('No refresh token in response');
+        // No refresh token in response
       }
       
       // Store user data

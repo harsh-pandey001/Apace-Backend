@@ -37,7 +37,7 @@ const LoginRoute = () => {
   
   // If already authenticated, redirect to dashboard
   if (isAuthenticated) {
-    console.log('Already authenticated, redirecting to dashboard');
+    // Already authenticated, redirecting to dashboard
     return <Navigate to="/dashboard" replace />;
   }
   

@@ -338,7 +338,7 @@ const adminDocumentController = {
         if (filePath && fs.existsSync(filePath)) {
           try {
             fs.unlinkSync(filePath);
-            console.log(`File deleted: ${filePath}`);
+            // File deleted successfully
           } catch (error) {
             console.error(`Error deleting file ${filePath}:`, error);
           }
