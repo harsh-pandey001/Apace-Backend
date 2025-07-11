@@ -6,6 +6,8 @@ const { protect, restrictTo } = require('../middleware/auth');
 const { conditionalProtect } = require('../middleware/conditionalAuth');
 const { mapGuestShipmentFields } = require('../middleware/fieldMapping');
 const { createShipmentValidation, createGuestShipmentValidation, createUnifiedShipmentValidation } = require('../validations/shipment.validation');
+const { userCacheMiddleware, clearCacheMiddleware, resourceCacheMiddleware, publicCacheMiddleware } = require('../middleware/cache');
+const { driverShipmentsCacheMiddleware, invalidateDriverShipmentsMiddleware } = require('../middleware/driverCache');
 
 const router = express.Router();
 
@@ -44,12 +46,12 @@ const trackingLimiter = rateLimit({
 });
 
 // Public routes (no auth required)
-// Track a shipment by tracking number
-router.get('/track/:trackingNumber', trackingLimiter, shipmentController.trackShipment);
+// Track a shipment by tracking number (with caching)
+router.get('/track/:trackingNumber', trackingLimiter, publicCacheMiddleware('tracking', 120), shipmentController.trackShipment);
 
 // Guest booking routes (keep for backward compatibility)
 router.post('/guest', guestLimiter, mapGuestShipmentFields, createGuestShipmentValidation, shipmentController.createGuestShipment);
-router.get('/guest/:trackingNumber', trackingLimiter, shipmentController.trackGuestShipment);
+router.get('/guest/:trackingNumber', trackingLimiter, publicCacheMiddleware('guest-tracking', 120), shipmentController.trackGuestShipment);
 
 // Unified booking endpoint that handles both authenticated and guest users
 router.post('/', unifiedBookingLimiter, mapGuestShipmentFields, createUnifiedShipmentValidation, conditionalProtect, shipmentController.createShipment);
@@ -58,20 +60,36 @@ router.post('/', unifiedBookingLimiter, mapGuestShipmentFields, createUnifiedShi
 router.use(protect);
 
 // Routes for regular users
-// Get all shipments for current user
-router.get('/my-shipments', shipmentController.getUserShipments);
+// Get all shipments for current user (with caching)
+router.get('/my-shipments', userCacheMiddleware('shipments', 180), shipmentController.getUserShipments);
 
-// Get a specific shipment for current user
-router.get('/my-shipments/:id', shipmentController.getUserShipment);
-
-// Track a shipment by tracking number (no auth required)
-router.get('/track/:trackingNumber', shipmentController.trackShipment);
+// Get a specific shipment for current user (with caching)
+router.get('/my-shipments/:id', resourceCacheMiddleware('shipment', 'id', 180), shipmentController.getUserShipment);
 
 // Admin routes
 router.get('/admin', restrictTo('admin'), shipmentController.getAllShipments);
-router.get('/admin/:id', restrictTo('admin'), shipmentController.getShipment);
-router.patch('/admin/:id', restrictTo('admin'), shipmentController.updateShipment);
-router.delete('/admin/:id', restrictTo('admin'), shipmentController.deleteShipment);
+router.get('/admin/:id', restrictTo('admin'), resourceCacheMiddleware('admin-shipment', 'id', 180), shipmentController.getShipment);
+router.patch('/admin/:id', 
+  restrictTo('admin'), 
+  clearCacheMiddleware({ 
+    resourceType: 'shipment',
+    userDataTypes: ['shipments'],
+    customInvalidation: async (req) => {
+      // Invalidate tracking cache for this shipment
+      const shipmentId = req.params.id;
+      await require('../middleware/cache').invalidateResourceCache('tracking', shipmentId);
+    }
+  }),
+  shipmentController.updateShipment
+);
+router.delete('/admin/:id', 
+  restrictTo('admin'), 
+  clearCacheMiddleware({ 
+    resourceType: 'shipment',
+    userDataTypes: ['shipments']
+  }),
+  shipmentController.deleteShipment
+);
 router.patch(
   '/admin/assign/:id',
   restrictTo('admin'),
@@ -80,11 +98,27 @@ router.patch(
     body('estimatedDeliveryDate').optional().isISO8601().withMessage('Estimated delivery date must be a valid date'),
     body('notes').optional().isString().withMessage('Notes must be a string')
   ],
+  clearCacheMiddleware({ 
+    resourceType: 'shipment',
+    userDataTypes: ['shipments'],
+    customInvalidation: async (req) => {
+      // Invalidate driver shipments cache when a shipment is assigned
+      const driverId = req.body.driverId;
+      if (driverId) {
+        const driverCacheManager = require('../utils/driverCache');
+        await driverCacheManager.invalidateDriverShipmentsCache(driverId);
+      }
+    }
+  }),
   shipmentController.assignShipment
 );
 
 // Driver routes
-router.get('/driver/assigned', restrictTo('driver', 'admin'), shipmentController.getDriverShipments);
+router.get('/driver/assigned', 
+  restrictTo('driver', 'admin'), 
+  driverShipmentsCacheMiddleware(180), // 3 minutes cache for driver shipments
+  shipmentController.getDriverShipments
+);
 router.patch(
   '/driver/update-status/:id',
   restrictTo('driver', 'admin'),
@@ -94,6 +128,16 @@ router.patch(
       .withMessage('Invalid status'),
     body('notes').optional().isString()
   ],
+  clearCacheMiddleware({ 
+    resourceType: 'shipment',
+    userDataTypes: ['shipments'],
+    customInvalidation: async (req) => {
+      // Invalidate tracking cache for this shipment
+      const shipmentId = req.params.id;
+      await require('../middleware/cache').invalidateResourceCache('tracking', shipmentId);
+    }
+  }),
+  invalidateDriverShipmentsMiddleware(), // Invalidate driver-specific shipments cache
   shipmentController.updateShipmentStatus
 );
 

@@ -18,6 +18,11 @@ const {
   validateDriverProfileUpdate
 } = require('../validations/driverSignup.validation');
 const { protect } = require('../middleware/auth');
+const { 
+  driverProfileCacheMiddleware, 
+  clearDriverCacheMiddleware,
+  driverCacheMiddleware
+} = require('../middleware/driverCache');
 
 // Driver signup route (public) - without OTP verification
 router.post('/signup', validateDriverSignupNoOTP, driverSignupNoOTP);
@@ -31,16 +36,26 @@ router.get('/all', protect, getAllDrivers);
 // Get available drivers filtered by vehicle type (admin only) - must come before /:id route
 router.get('/available', protect, getAvailableDrivers);
 
-// Get current driver profile (driver only) - must come before /:id route
-router.get('/profile', protect, getDriverProfile);
+// Get current driver profile (driver only) - must come before /:id route (with caching)
+router.get('/profile', protect, driverProfileCacheMiddleware(300), getDriverProfile);
 
-// Update current driver profile (driver only) - must come before /:id route
-router.patch('/profile', protect, validateDriverProfileUpdate, updateDriverProfile);
+// Update current driver profile (driver only) - must come before /:id route (with cache invalidation)
+router.patch('/profile', 
+  protect, 
+  validateDriverProfileUpdate, 
+  clearDriverCacheMiddleware({ dataTypes: ['profile'] }),
+  updateDriverProfile
+);
 
-// Update driver availability status (driver or admin) - must come before /:id route
-router.put('/:id/availability', protect, validateDriverAvailability, updateDriverAvailability);
+// Update driver availability status (driver or admin) - must come before /:id route (with cache invalidation)
+router.put('/:id/availability', 
+  protect, 
+  validateDriverAvailability, 
+  clearDriverCacheMiddleware({ dataTypes: ['status', 'profile'] }),
+  updateDriverAvailability
+);
 
-// Get driver by ID (admin only) - generic route must come last
-router.get('/:id', protect, getDriverById);
+// Get driver by ID (admin only) - generic route must come last (with caching)
+router.get('/:id', protect, driverCacheMiddleware('profile', 300), getDriverById);
 
 module.exports = router;

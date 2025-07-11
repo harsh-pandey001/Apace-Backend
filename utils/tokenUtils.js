@@ -1,13 +1,44 @@
 const jwt = require('jsonwebtoken');
 
 /**
+ * Normalize expiration time to proper JWT format
+ * @param {string} expiry - Expiration time (could be seconds or JWT format)
+ * @returns {string|number} Normalized expiration
+ */
+const normalizeExpiry = (expiry) => {
+  // If it's already a JWT format (contains letters), return as-is
+  if (/[a-zA-Z]/.test(expiry)) {
+    return expiry;
+  }
+  
+  // If it's a string of numbers, convert common values to proper format
+  if (typeof expiry === 'string' && /^\d+$/.test(expiry)) {
+    const seconds = parseInt(expiry, 10);
+    if (seconds === 86400) return '24h';      // 24 hours
+    if (seconds === 604800) return '7d';     // 7 days
+    if (seconds === 3600) return '1h';       // 1 hour
+    if (seconds === 1800) return '30m';      // 30 minutes
+    // For other values, return as number (seconds)
+    return seconds;
+  }
+  
+  // If it's a number, return as-is (will be interpreted as seconds)
+  if (typeof expiry === 'number') {
+    return expiry;
+  }
+  
+  // Fallback to default
+  return '1h';
+};
+
+/**
  * Generate a JWT token for a user
  * @param {string} id - User ID to encode in the token
  * @returns {string} JWT token
  */
 exports.signToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN
+    expiresIn: "24h"
   });
 };
 
@@ -18,7 +49,7 @@ exports.signToken = (id) => {
  */
 exports.signRefreshToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_REFRESH_SECRET, {
-    expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN
+    expiresIn: "7d"
   });
 };
 

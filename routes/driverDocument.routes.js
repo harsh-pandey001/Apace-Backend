@@ -7,6 +7,10 @@ const { validate } = require('../middleware/validate');
 const { protect } = require('../middleware/auth');
 const { normalizeDocumentQuery } = require('../middleware/normalizeQuery');
 const driverDocumentValidation = require('../validations/driverDocument.validation');
+const { 
+  driverDocumentsCacheMiddleware, 
+  clearDriverCacheMiddleware 
+} = require('../middleware/driverCache');
 
 // Upload handler with error handling
 const uploadHandler = (req, res, next) => {
@@ -24,20 +28,23 @@ router.post('/driver-documents/upload',
   uploadHandler,
   ...driverDocumentValidation.uploadDocuments,
   validate,
+  clearDriverCacheMiddleware({ dataTypes: ['documents'] }),
   driverDocumentController.uploadDocuments
 );
 
-// Get current authenticated driver's documents (more secure)
+// Get current authenticated driver's documents (more secure) - with caching
 router.get('/driver-documents/my',
   protect,
+  driverDocumentsCacheMiddleware(600), // 10 minutes cache for documents
   driverDocumentController.getMyDocuments
 );
 
-// Get driver documents by ID (admin or specific driver access)
+// Get driver documents by ID (admin or specific driver access) - with caching
 router.get('/driver-documents/:driverId',
   protect,
   ...driverDocumentValidation.getDriverDocuments,
   validate,
+  driverDocumentsCacheMiddleware(600),
   driverDocumentController.getDriverDocuments
 );
 
@@ -45,6 +52,17 @@ router.post('/driver-documents/:driverId/withdraw',
   protect,
   ...driverDocumentValidation.withdrawDocument,
   validate,
+  clearDriverCacheMiddleware({ 
+    dataTypes: ['documents'],
+    customInvalidation: async (req, res, driverId) => {
+      // Also invalidate the specific driver's documents cache
+      const targetDriverId = req.params.driverId;
+      if (targetDriverId && targetDriverId !== driverId) {
+        const driverCacheManager = require('../utils/driverCache');
+        await driverCacheManager.invalidateDriverCache(targetDriverId, 'documents');
+      }
+    }
+  }),
   driverDocumentController.withdrawDocument
 );
 
@@ -61,6 +79,15 @@ router.post('/admin/documents/:driverId/verify',
   protect,
   ...driverDocumentValidation.verifyDocuments,
   validate,
+  clearDriverCacheMiddleware({ 
+    dataTypes: ['documents'],
+    customInvalidation: async (req, res, adminId) => {
+      // Invalidate the specific driver's documents cache
+      const driverId = req.params.driverId;
+      const driverCacheManager = require('../utils/driverCache');
+      await driverCacheManager.invalidateDriverCache(driverId, 'documents');
+    }
+  }),
   adminDocumentController.verifyDocuments
 );
 
@@ -68,6 +95,15 @@ router.post('/admin/documents/:driverId/reject',
   protect,
   ...driverDocumentValidation.rejectDocuments,
   validate,
+  clearDriverCacheMiddleware({ 
+    dataTypes: ['documents'],
+    customInvalidation: async (req, res, adminId) => {
+      // Invalidate the specific driver's documents cache
+      const driverId = req.params.driverId;
+      const driverCacheManager = require('../utils/driverCache');
+      await driverCacheManager.invalidateDriverCache(driverId, 'documents');
+    }
+  }),
   adminDocumentController.rejectDocuments
 );
 

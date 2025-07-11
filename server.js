@@ -6,12 +6,25 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
+const jwt = require('jsonwebtoken');
 const { errorHandler } = require('./middleware/errorHandler');
 const { setupLogger } = require('./utils/logger');
 const { connectDB } = require('./config/database');
+const redisConfig = require('./config/redis');
 
 // Initialize logger
 const logger = setupLogger();
+
+// Validate critical environment variables
+const requiredEnvVars = ['JWT_SECRET', 'JWT_REFRESH_SECRET', 'JWT_EXPIRES_IN', 'REFRESH_TOKEN_EXPIRES_IN'];
+for (const envVar of requiredEnvVars) {
+  if (!process.env[envVar]) {
+    logger.error(`Missing required environment variable: ${envVar}`);
+    process.exit(1);
+  }
+}
+
+logger.info(`JWT Configuration - Access Token: ${process.env.JWT_EXPIRES_IN}, Refresh Token: ${process.env.REFRESH_TOKEN_EXPIRES_IN}`);
 
 // Import routes
 const authRoutes = require('./routes/auth.routes');
@@ -76,8 +89,124 @@ const limiter = rateLimit({
 app.use('/api', limiter);
 
 // Health check route
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+app.get('/health', async (req, res) => {
+  const cacheManager = require('./utils/cache');
+  const cacheStats = await cacheManager.getCacheStats();
+  
+  res.status(200).json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    jwt: {
+      accessTokenExpiry: process.env.JWT_EXPIRES_IN,
+      refreshTokenExpiry: process.env.REFRESH_TOKEN_EXPIRES_IN,
+      hasSecret: !!process.env.JWT_SECRET,
+      hasRefreshSecret: !!process.env.JWT_REFRESH_SECRET
+    },
+    cache: {
+      available: cacheStats.available,
+      connected: cacheStats.connected
+    }
+  });
+});
+
+// JWT Debug endpoint for production testing
+app.get('/debug/jwt', async (req, res) => {
+  const { token } = req.query;
+  
+  if (!token) {
+    return res.status(400).json({
+      error: 'Please provide token as query parameter: /debug/jwt?token=your_token'
+    });
+  }
+  
+  try {
+    // Try to decode without verification to see the payload
+    const decodedWithoutVerify = jwt.decode(token, { complete: true });
+    
+    // Try to verify the token
+    let verificationResult;
+    try {
+      const verified = jwt.verify(token, process.env.JWT_SECRET);
+      verificationResult = { success: true, payload: verified };
+    } catch (verifyError) {
+      verificationResult = { 
+        success: false, 
+        error: verifyError.name,
+        message: verifyError.message,
+        expiredAt: verifyError.expiredAt
+      };
+    }
+    
+    res.json({
+      status: 'jwt-debug',
+      environment: {
+        hasJwtSecret: !!process.env.JWT_SECRET,
+        jwtExpiresIn: process.env.JWT_EXPIRES_IN,
+        nodeEnv: process.env.NODE_ENV
+      },
+      token: {
+        preview: token.substring(0, 50) + '...',
+        length: token.length,
+        parts: token.split('.').length
+      },
+      decoded: decodedWithoutVerify,
+      verification: verificationResult,
+      serverTime: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to debug token',
+      message: error.message
+    });
+  }
+});
+
+// Cache test route (development only)
+app.get('/health/cache-test', async (req, res) => {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(404).json({ message: 'Not found' });
+  }
+  
+  try {
+    const CacheTest = require('./utils/cacheTest');
+    const testResults = await CacheTest.runAllTests();
+    
+    res.status(200).json({
+      status: 'cache-test-completed',
+      timestamp: new Date().toISOString(),
+      results: testResults
+    });
+  } catch (error) {
+    logger.error('Cache test endpoint error:', error);
+    res.status(500).json({
+      status: 'cache-test-failed',
+      error: error.message
+    });
+  }
+});
+
+// Driver cache test route (development only)
+app.get('/health/driver-cache-test', async (req, res) => {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(404).json({ message: 'Not found' });
+  }
+  
+  try {
+    const DriverCacheTest = require('./utils/driverCacheTest');
+    const testResults = await DriverCacheTest.runAllDriverCacheTests();
+    
+    res.status(200).json({
+      status: 'driver-cache-test-completed',
+      timestamp: new Date().toISOString(),
+      results: testResults
+    });
+  } catch (error) {
+    logger.error('Driver cache test endpoint error:', error);
+    res.status(500).json({
+      status: 'driver-cache-test-failed',
+      error: error.message
+    });
+  }
 });
 
 // API Routes
@@ -110,6 +239,18 @@ const startServer = async () => {
     // Connect to database
     await connectDB();
     
+    // Initialize Redis connection (non-blocking)
+    if (process.env.CACHE_ENABLED !== 'false') {
+      try {
+        await redisConfig.connect();
+        logger.info('Cache system initialized');
+      } catch (error) {
+        logger.warn('Cache system failed to initialize, continuing without cache:', error.message);
+      }
+    } else {
+      logger.info('Cache system disabled by configuration');
+    }
+    
     // Only start the server if not in Vercel environment
     if (!process.env.VERCEL) {
       app.listen(PORT, () => {
@@ -126,10 +267,26 @@ const startServer = async () => {
 if (!process.env.VERCEL) {
   startServer();
 } else {
-  // For Vercel, just connect to database without starting server
-  connectDB().catch(error => {
-    logger.error('Failed to connect to database:', error);
-  });
+  // For Vercel, connect to database and Redis without starting server
+  const initializeVercel = async () => {
+    try {
+      await connectDB();
+      
+      // Initialize Redis for Vercel
+      if (process.env.CACHE_ENABLED !== 'false') {
+        try {
+          await redisConfig.connect();
+          logger.info('Cache system initialized for Vercel');
+        } catch (error) {
+          logger.warn('Cache system failed to initialize on Vercel:', error.message);
+        }
+      }
+    } catch (error) {
+      logger.error('Failed to initialize on Vercel:', error);
+    }
+  };
+  
+  initializeVercel();
 }
 
 // Handle unhandled promise rejections
@@ -139,6 +296,35 @@ process.on('unhandledRejection', (err) => {
   
   // Gracefully shutdown
   process.exit(1);
+});
+
+// Handle graceful shutdown
+process.on('SIGTERM', async () => {
+  logger.info('SIGTERM received, shutting down gracefully');
+  
+  // Close Redis connection
+  try {
+    await redisConfig.disconnect();
+    logger.info('Redis connection closed');
+  } catch (error) {
+    logger.error('Error closing Redis connection:', error);
+  }
+  
+  process.exit(0);
+});
+
+process.on('SIGINT', async () => {
+  logger.info('SIGINT received, shutting down gracefully');
+  
+  // Close Redis connection
+  try {
+    await redisConfig.disconnect();
+    logger.info('Redis connection closed');
+  } catch (error) {
+    logger.error('Error closing Redis connection:', error);
+  }
+  
+  process.exit(0);
 });
 
 module.exports = app; // For testing
