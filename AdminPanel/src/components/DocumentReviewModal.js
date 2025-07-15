@@ -138,7 +138,7 @@ const DocumentReviewModal = ({
   const handleDownload = (documentPath, documentName) => {
     if (documentPath) {
       const filename = documentPath.split('/').pop();
-      const url = `http://localhost:5000/uploads/documents/${filename}`;
+      const url = `${process.env.REACT_APP_API_BASE_URL || 'https://apace-backend-86500976134.us-central1.run.app'}/uploads/documents/${filename}`;
       const link = document.createElement('a');
       link.href = url;
       link.download = documentName || 'document';

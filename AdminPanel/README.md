@@ -45,12 +45,35 @@ AdminPanel/
    npm install
    ```
 
-3. Start the development server:
+3. Configure environment variables:
+   ```bash
+   cp .env.example .env
+   ```
+   Edit `.env` to set your backend URL:
+   ```
+   REACT_APP_API_BASE_URL=https://apace-backend-86500976134.us-central1.run.app
+   ```
+
+4. Start the development server:
    ```bash
    npm start
    ```
 
-4. Open [http://localhost:3000](http://localhost:3000) in your browser
+5. Open [http://localhost:3000](http://localhost:3000) in your browser
+
+## Configuration
+
+### Environment Variables
+
+The admin panel uses the following environment variables:
+
+- `REACT_APP_API_BASE_URL`: Base URL for the backend API (required)
+  - **Production**: `https://apace-backend-86500976134.us-central1.run.app`
+  - **Development**: `http://localhost:5000`
+
+### Backend Configuration
+
+The admin panel connects to the APACE Transportation Backend API. Make sure the backend is running and accessible at the configured URL.
 
 ## Technologies Used
 

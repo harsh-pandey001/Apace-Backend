@@ -60,9 +60,7 @@ app.use(morgan('combined', { stream: { write: message => logger.info(message.tri
 app.use(express.json({ limit: '10kb' })); // Body parser for JSON payloads
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? process.env.CORS_ORIGIN 
-    : ['http://localhost:3000', 'http://127.0.0.1:3000'],
+  origin: true, // Allow all origins for admin panel access
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
@@ -71,9 +69,7 @@ app.use(compression());
 
 // Serve uploaded files statically with CORS headers
 app.use('/uploads', (req, res, next) => {
-  res.header('Access-Control-Allow-Origin', process.env.NODE_ENV === 'production' 
-    ? process.env.CORS_ORIGIN 
-    : 'http://localhost:3000');
+  res.header('Access-Control-Allow-Origin', '*'); // Allow all origins for file uploads
   res.header('Access-Control-Allow-Methods', 'GET');
   res.header('Access-Control-Allow-Headers', 'Content-Type');
   next();
@@ -164,11 +160,8 @@ app.get('/debug/jwt', async (req, res) => {
   }
 });
 
-// Cache test route (development only)
+// Cache test route
 app.get('/health/cache-test', async (req, res) => {
-  if (process.env.NODE_ENV === 'production') {
-    return res.status(404).json({ message: 'Not found' });
-  }
   
   try {
     const CacheTest = require('./utils/cacheTest');
@@ -188,11 +181,8 @@ app.get('/health/cache-test', async (req, res) => {
   }
 });
 
-// Driver cache test route (development only)
+// Driver cache test route
 app.get('/health/driver-cache-test', async (req, res) => {
-  if (process.env.NODE_ENV === 'production') {
-    return res.status(404).json({ message: 'Not found' });
-  }
   
   try {
     const DriverCacheTest = require('./utils/driverCacheTest');

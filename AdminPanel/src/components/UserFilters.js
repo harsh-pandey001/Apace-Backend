@@ -117,7 +117,7 @@ const UserFilters = ({ onSearch, onFilter, isDriverMode = false }) => {
 
   const fetchVehicleTypes = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/vehicles');
+      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'https://apace-backend-86500976134.us-central1.run.app'}/api/vehicles`);
       const data = await response.json();
       if (data.success && data.data) {
         const types = data.data.map(vehicle => ({
