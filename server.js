@@ -246,7 +246,7 @@ const startServer = async () => {
     
     // Only start the server if not in Vercel environment
     if (!process.env.VERCEL) {
-      app.listen(PORT, () => {
+      app.listen(PORT, '0.0.0.0', () => {
         logger.info(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
       });
     }
