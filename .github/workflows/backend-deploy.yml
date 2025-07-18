@@ -89,6 +89,8 @@ jobs:
             --update-secrets DATABASE_NAME=DATABASE_NAME:latest \
             --update-secrets JWT_SECRET=JWT_SECRET:latest \
             --update-secrets JWT_REFRESH_SECRET=JWT_REFRESH_SECRET:latest \
+            --update-secrets JWT_EXPIRES_IN=JWT_EXPIRES_IN:latest \
+            --update-secrets REFRESH_TOKEN_EXPIRES_IN=REFRESH_TOKEN_EXPIRES_IN:latest \
             --update-secrets REDIS_HOST=REDIS_HOST:latest \
             --update-secrets REDIS_PORT=REDIS_PORT:latest \
             --update-secrets REDIS_PASSWORD=REDIS_PASSWORD:latest \
