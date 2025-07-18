@@ -12,7 +12,7 @@ package-lock.json
 yarn.lock
 
 # Allow AdminPanel package-lock.json to be tracked
-!AdminPanel/package-lock.json
+# !AdminPanel/package-lock.json
 CLAUDE.md
 .claude/
 
