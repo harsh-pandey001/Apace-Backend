@@ -39,7 +39,11 @@
       "Bash(/dev/null)",
       "Bash(pkill:*)",
       "Bash(npm start)",
-      "WebFetch(domain:apace-backend-86500976134.us-central1.run.app)"
+      "WebFetch(domain:apace-backend-86500976134.us-central1.run.app)",
+      "Bash(npm cache clean:*)",
+      "Bash(sudo chown:*)",
+      "Bash(npm audit:*)",
+      "Bash(git add:*)"
     ],
     "deny": []
   },
