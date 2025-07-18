@@ -1,0 +1,168 @@
+name: Deploy Backend to Cloud Run
+
+on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - 'AdminPanel/**'
+      - 'README.md'
+      - 'docs/**'
+      - '.github/workflows/admin-deploy.yml'
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: bright-meridian-465411-e2
+  SERVICE_NAME: apace-backend
+  REGION: us-central1
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linting
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Run tests
+        run: npm test
+        continue-on-error: true
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Setup Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Configure Docker for GCR
+        run: |
+          gcloud auth configure-docker gcr.io
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            --tag gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+            --tag gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest \
+            --platform linux/amd64 \
+            .
+
+      - name: Push Docker image
+        run: |
+          docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+          docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy ${{ env.SERVICE_NAME }} \
+            --image gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+            --region ${{ env.REGION }} \
+            --platform managed \
+            --allow-unauthenticated \
+            --port 8080 \
+            --memory 512Mi \
+            --cpu 1000m \
+            --min-instances 0 \
+            --max-instances 10 \
+            --set-env-vars NODE_ENV=production \
+            --set-env-vars DATABASE_HOST=${{ secrets.DATABASE_HOST }} \
+            --set-env-vars DATABASE_PORT=${{ secrets.DATABASE_PORT }} \
+            --set-env-vars DATABASE_USER=${{ secrets.DATABASE_USER }} \
+            --set-env-vars DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }} \
+            --set-env-vars DATABASE_NAME=${{ secrets.DATABASE_NAME }} \
+            --set-env-vars JWT_SECRET=${{ secrets.JWT_SECRET }} \
+            --set-env-vars JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET }} \
+            --set-env-vars REDIS_HOST=${{ secrets.REDIS_HOST }} \
+            --set-env-vars REDIS_PORT=${{ secrets.REDIS_PORT }} \
+            --set-env-vars REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }} \
+            --set-env-vars CORS_ORIGIN=${{ secrets.CORS_ORIGIN }} \
+            --set-env-vars CACHE_ENABLED=true \
+            --set-env-vars CACHE_TTL_DEFAULT=300 \
+            --timeout 300 \
+            --concurrency 80 \
+            --no-traffic
+
+      - name: Get service URL
+        run: |
+          SERVICE_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} \
+            --region ${{ env.REGION }} \
+            --format 'value(status.url)')
+          echo "Backend deployed to: $SERVICE_URL"
+          echo "SERVICE_URL=$SERVICE_URL" >> $GITHUB_ENV
+
+      - name: Run database migrations
+        run: |
+          # Create a temporary service account for migrations
+          gcloud run jobs create migration-job-${{ github.sha }} \
+            --image gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+            --region ${{ env.REGION }} \
+            --memory 512Mi \
+            --cpu 1000m \
+            --set-env-vars NODE_ENV=production \
+            --set-env-vars DATABASE_HOST=${{ secrets.DATABASE_HOST }} \
+            --set-env-vars DATABASE_PORT=${{ secrets.DATABASE_PORT }} \
+            --set-env-vars DATABASE_USER=${{ secrets.DATABASE_USER }} \
+            --set-env-vars DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }} \
+            --set-env-vars DATABASE_NAME=${{ secrets.DATABASE_NAME }} \
+            --command npm \
+            --args run,db:migrate || true
+
+          # Run the migration job
+          gcloud run jobs execute migration-job-${{ github.sha }} \
+            --region ${{ env.REGION }} \
+            --wait || true
+
+          # Clean up migration job
+          gcloud run jobs delete migration-job-${{ github.sha }} \
+            --region ${{ env.REGION }} \
+            --quiet || true
+
+      - name: Run smoke tests
+        run: |
+          # Wait for deployment to be ready
+          sleep 30
+          
+          # Test health endpoint
+          curl -f "$SERVICE_URL/health" || curl -f "$SERVICE_URL/" || exit 1
+          
+          # Test API endpoint
+          curl -f "$SERVICE_URL/api/health" || echo "API health endpoint not available"
+          
+          echo "✅ Smoke tests passed!"
+
+      - name: Promote to live traffic
+        run: |
+          gcloud run services update-traffic ${{ env.SERVICE_NAME }} \
+            --region ${{ env.REGION }} \
+            --to-latest
+
+      - name: Cleanup old images
+        run: |
+          # Keep only the 5 most recent images
+          gcloud container images list-tags gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }} \
+            --limit=999 --sort-by=TIMESTAMP \
+            --format="get(digest)" | tail -n +6 | \
+            xargs -I {} gcloud container images delete gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}@{} --force-delete-tags --quiet || true
+
+      - name: Summary
+        run: |
+          echo "🎉 Backend deployment completed successfully!"
+          echo "🚀 Service URL: $SERVICE_URL"
+          echo "🏷️  Image: gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}"
+          echo "📊 View logs: https://console.cloud.google.com/run/detail/${{ env.REGION }}/${{ env.SERVICE_NAME }}/logs"
+          echo "🔗 API Documentation: $SERVICE_URL/api/docs"

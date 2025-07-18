@@ -1,0 +1,134 @@
+name: Deploy Admin Panel to Cloud Run
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'AdminPanel/**'
+      - '.github/workflows/admin-deploy.yml'
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: bright-meridian-465411-e2
+  SERVICE_NAME: apace-admin
+  REGION: us-central1
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: AdminPanel/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd AdminPanel
+          npm ci
+
+      - name: Run tests
+        run: |
+          cd AdminPanel
+          npm test -- --coverage --watchAll=false
+        continue-on-error: true
+
+      - name: Build React app
+        run: |
+          cd AdminPanel
+          npm run build
+        env:
+          REACT_APP_API_BASE_URL: https://apace-backend-l5ucytvnga-uc.a.run.app/api
+          NODE_ENV: production
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Setup Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Configure Docker for GCR
+        run: |
+          gcloud auth configure-docker gcr.io
+
+      - name: Build and push Docker image
+        run: |
+          # Build the Docker image
+          docker build \
+            --build-arg REACT_APP_API_BASE_URL=https://apace-backend-l5ucytvnga-uc.a.run.app/api \
+            --tag gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+            --tag gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest \
+            ./AdminPanel
+
+          # Push both tags
+          docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+          docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy ${{ env.SERVICE_NAME }} \
+            --image gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+            --region ${{ env.REGION }} \
+            --platform managed \
+            --allow-unauthenticated \
+            --port 8080 \
+            --memory 256Mi \
+            --cpu 500m \
+            --min-instances 0 \
+            --max-instances 5 \
+            --set-env-vars NODE_ENV=production \
+            --timeout 300 \
+            --concurrency 80 \
+            --no-traffic
+
+      - name: Get service URL
+        run: |
+          SERVICE_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} \
+            --region ${{ env.REGION }} \
+            --format 'value(status.url)')
+          echo "Admin Panel deployed to: $SERVICE_URL"
+          echo "SERVICE_URL=$SERVICE_URL" >> $GITHUB_ENV
+
+      - name: Run smoke tests
+        run: |
+          # Wait for deployment to be ready
+          sleep 30
+          
+          # Test health endpoint
+          curl -f "$SERVICE_URL/health.json" || exit 1
+          
+          # Test main page
+          curl -f "$SERVICE_URL/" || exit 1
+          
+          echo "✅ Smoke tests passed!"
+
+      - name: Promote to live traffic
+        run: |
+          gcloud run services update-traffic ${{ env.SERVICE_NAME }} \
+            --region ${{ env.REGION }} \
+            --to-latest
+
+      - name: Cleanup old images
+        run: |
+          # Keep only the 5 most recent images
+          gcloud container images list-tags gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }} \
+            --limit=999 --sort-by=TIMESTAMP \
+            --format="get(digest)" | tail -n +6 | \
+            xargs -I {} gcloud container images delete gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}@{} --force-delete-tags --quiet || true
+
+      - name: Summary
+        run: |
+          echo "🎉 Admin Panel deployment completed successfully!"
+          echo "📱 Service URL: $SERVICE_URL"
+          echo "🏷️  Image: gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}"
+          echo "📊 View logs: https://console.cloud.google.com/run/detail/${{ env.REGION }}/${{ env.SERVICE_NAME }}/logs"

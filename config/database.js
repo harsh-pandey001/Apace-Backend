@@ -14,8 +14,8 @@ const config = {
   }
 };
 
-// Add SSL configuration for production
-if (process.env.NODE_ENV === 'production') {
+// Add SSL configuration for production (only if DATABASE_SSL is enabled)
+if (process.env.NODE_ENV === 'production' && process.env.DATABASE_SSL === 'true') {
   config.dialectOptions = {
     ssl: {
       require: true,

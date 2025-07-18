@@ -7,7 +7,13 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "build:prod": "NODE_ENV=production npm run build",
+    "serve": "serve -s build -l 8080",
+    "deploy": "npm run build:prod && npm run serve",
+    "docker:build": "docker build -t apace-admin .",
+    "docker:run": "docker run -p 8080:8080 apace-admin",
+    "cloud:deploy": "../scripts/deploy-admin.sh"
   },
   "dependencies": {
     "@emotion/react": "^11.10.5",
@@ -23,7 +29,8 @@
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.8.0",
     "react-scripts": "5.0.1",
-    "react-to-print": "^3.1.0"
+    "react-to-print": "^3.1.0",
+    "serve": "^14.2.0"
   },
   "eslintConfig": {
     "extends": [

@@ -1,0 +1,57 @@
+steps:
+  # Install dependencies and build the React app
+  - name: 'node:18-alpine'
+    entrypoint: 'sh'
+    args:
+      - '-c'
+      - |
+        cd AdminPanel
+        npm ci
+        npm run build
+
+  # Build the Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '--file=AdminPanel/Dockerfile'
+      - '--tag=gcr.io/$PROJECT_ID/apace-admin:$BUILD_ID'
+      - '--tag=gcr.io/$PROJECT_ID/apace-admin:latest'
+      - '--build-arg=REACT_APP_API_BASE_URL=https://apace-backend-l5ucytvnga-uc.a.run.app/api'
+      - './AdminPanel'
+
+  # Push the image to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/apace-admin:$BUILD_ID'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/apace-admin:latest'
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'apace-admin'
+      - '--image=gcr.io/$PROJECT_ID/apace-admin:$BUILD_ID'
+      - '--region=us-central1'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--port=8080'
+      - '--memory=256Mi'
+      - '--cpu=500m'
+      - '--min-instances=0'
+      - '--max-instances=5'
+      - '--set-env-vars=NODE_ENV=production'
+
+# Store the built image
+images:
+  - 'gcr.io/$PROJECT_ID/apace-admin:$BUILD_ID'
+  - 'gcr.io/$PROJECT_ID/apace-admin:latest'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: 'E2_HIGHCPU_8'
