@@ -80,19 +80,19 @@ jobs:
             --min-instances 0 \
             --max-instances 10 \
             --set-env-vars NODE_ENV=production \
-            --set-env-vars DATABASE_HOST=${{ secrets.DATABASE_HOST }} \
-            --set-env-vars DATABASE_PORT=${{ secrets.DATABASE_PORT }} \
-            --set-env-vars DATABASE_USER=${{ secrets.DATABASE_USER }} \
-            --set-env-vars DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }} \
-            --set-env-vars DATABASE_NAME=${{ secrets.DATABASE_NAME }} \
-            --set-env-vars JWT_SECRET=${{ secrets.JWT_SECRET }} \
-            --set-env-vars JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET }} \
-            --set-env-vars REDIS_HOST=${{ secrets.REDIS_HOST }} \
-            --set-env-vars REDIS_PORT=${{ secrets.REDIS_PORT }} \
-            --set-env-vars REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }} \
-            --set-env-vars CORS_ORIGIN=${{ secrets.CORS_ORIGIN }} \
             --set-env-vars CACHE_ENABLED=true \
             --set-env-vars CACHE_TTL_DEFAULT=300 \
+            --update-secrets DATABASE_HOST=DATABASE_HOST:latest \
+            --update-secrets DATABASE_PORT=DATABASE_PORT:latest \
+            --update-secrets DATABASE_USER=DATABASE_USER:latest \
+            --update-secrets DATABASE_PASSWORD=DATABASE_PASSWORD:latest \
+            --update-secrets DATABASE_NAME=DATABASE_NAME:latest \
+            --update-secrets JWT_SECRET=JWT_SECRET:latest \
+            --update-secrets JWT_REFRESH_SECRET=JWT_REFRESH_SECRET:latest \
+            --update-secrets REDIS_HOST=REDIS_HOST:latest \
+            --update-secrets REDIS_PORT=REDIS_PORT:latest \
+            --update-secrets REDIS_PASSWORD=REDIS_PASSWORD:latest \
+            --update-secrets CORS_ORIGIN=CORS_ORIGIN:latest \
             --timeout 300 \
             --concurrency 80
 
