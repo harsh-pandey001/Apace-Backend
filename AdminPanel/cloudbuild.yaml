@@ -42,7 +42,7 @@ steps:
       - '--allow-unauthenticated'
       - '--port=8080'
       - '--memory=256Mi'
-      - '--cpu=500m'
+      - '--cpu=1000m'
       - '--min-instances=0'
       - '--max-instances=5'
       - '--set-env-vars=NODE_ENV=production'
