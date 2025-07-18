@@ -9,7 +9,7 @@ const rateLimit = require('express-rate-limit');
 const jwt = require('jsonwebtoken');
 const { errorHandler } = require('./middleware/errorHandler');
 const { setupLogger } = require('./utils/logger');
-const { connectDB } = require('./config/database');
+const { connectDB, ensureDBConnection, getDBStatus } = require('./config/database');
 const redisConfig = require('./config/redis');
 
 // Initialize logger
@@ -87,25 +87,80 @@ const limiter = rateLimit({
 // Apply rate limiting to all requests
 app.use('/api', limiter);
 
-// Health check route
-app.get('/health', async (req, res) => {
-  const cacheManager = require('./utils/cache');
-  const cacheStats = await cacheManager.getCacheStats();
-  
+// Health check route (server health only - for Cloud Run startup probe)
+app.get('/health', (req, res) => {
   res.status(200).json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
+    server: 'running',
     jwt: {
       accessTokenExpiry: process.env.JWT_EXPIRES_IN,
       refreshTokenExpiry: process.env.REFRESH_TOKEN_EXPIRES_IN,
       hasSecret: !!process.env.JWT_SECRET,
       hasRefreshSecret: !!process.env.JWT_REFRESH_SECRET
-    },
-    cache: {
-      available: cacheStats.available,
-      connected: cacheStats.connected
     }
   });
+});
+
+// Database health check route
+app.get('/health/db', async (req, res) => {
+  const dbStatus = getDBStatus();
+  
+  if (dbStatus.connected) {
+    res.status(200).json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      database: {
+        connected: true,
+        connecting: false
+      }
+    });
+  } else if (dbStatus.connecting) {
+    res.status(503).json({
+      status: 'connecting',
+      timestamp: new Date().toISOString(),
+      database: {
+        connected: false,
+        connecting: true
+      }
+    });
+  } else {
+    res.status(503).json({
+      status: 'error',
+      timestamp: new Date().toISOString(),
+      database: {
+        connected: false,
+        connecting: false,
+        error: dbStatus.error
+      }
+    });
+  }
+});
+
+// Cache health check route
+app.get('/health/cache', async (req, res) => {
+  try {
+    const cacheManager = require('./utils/cache');
+    const cacheStats = await cacheManager.getCacheStats();
+    
+    res.status(200).json({ 
+      status: 'ok', 
+      timestamp: new Date().toISOString(),
+      cache: {
+        available: cacheStats.available,
+        connected: cacheStats.connected
+      }
+    });
+  } catch (error) {
+    res.status(503).json({
+      status: 'error',
+      timestamp: new Date().toISOString(),
+      cache: {
+        available: false,
+        error: error.message
+      }
+    });
+  }
 });
 
 // JWT Debug endpoint for production testing
@@ -202,6 +257,9 @@ app.get('/health/driver-cache-test', async (req, res) => {
   }
 });
 
+// Apply lazy database connection middleware to all API routes
+app.use('/api', ensureDBConnection);
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
@@ -226,12 +284,9 @@ app.use((req, res) => {
   });
 });
 
-// Connect to database and start server
+// Start server without blocking on database connection
 const startServer = async () => {
   try {
-    // Connect to database
-    await connectDB();
-    
     // Initialize Redis connection (non-blocking)
     if (process.env.CACHE_ENABLED !== 'false') {
       try {
@@ -248,6 +303,7 @@ const startServer = async () => {
     if (!process.env.VERCEL) {
       app.listen(PORT, '0.0.0.0', () => {
         logger.info(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+        logger.info('Database connection will be established on first API request');
       });
     }
   } catch (error) {
@@ -256,14 +312,14 @@ const startServer = async () => {
   }
 };
 
-// Initialize database connection
+// Initialize server
 if (!process.env.VERCEL) {
   startServer();
 } else {
-  // For Vercel, connect to database and Redis without starting server
+  // For Vercel, initialize Redis without starting server or connecting to database
   const initializeVercel = async () => {
     try {
-      await connectDB();
+      logger.info('Initializing Vercel environment');
       
       // Initialize Redis for Vercel
       if (process.env.CACHE_ENABLED !== 'false') {

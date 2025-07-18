@@ -38,8 +38,17 @@ const sequelize = process.env.DATABASE_URL
     }
   );
 
-// Test database connection
+// Database connection state
+let isConnected = false;
+let isConnecting = false;
+let connectionError = null;
+
+// Test database connection (non-blocking)
 const connectDB = async () => {
+  if (isConnected) return true;
+  if (isConnecting) return false;
+  
+  isConnecting = true;
   try {
     await sequelize.authenticate();
     logger.info('Database connection has been established successfully.');
@@ -48,13 +57,62 @@ const connectDB = async () => {
     // Using alter:true instead of force:true to keep data between restarts
     await sequelize.sync({ alter: false });
     logger.info('Database synchronized successfully');
+    
+    isConnected = true;
+    isConnecting = false;
+    connectionError = null;
+    return true;
   } catch (error) {
     logger.error('Unable to connect to the database:', error);
-    process.exit(1);
+    isConnecting = false;
+    connectionError = error;
+    return false;
   }
 };
 
+// Lazy database connection middleware
+const ensureDBConnection = async (req, res, next) => {
+  if (isConnected) {
+    return next();
+  }
+  
+  if (isConnecting) {
+    // Wait for ongoing connection attempt
+    let attempts = 0;
+    while (isConnecting && attempts < 10) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      attempts++;
+    }
+    
+    if (isConnected) {
+      return next();
+    }
+  }
+  
+  // Try to connect
+  const connected = await connectDB();
+  if (connected) {
+    return next();
+  }
+  
+  // Connection failed
+  return res.status(500).json({
+    status: 'error',
+    message: 'Database connection failed',
+    error: connectionError?.message || 'Unknown database error'
+  });
+};
+
+// Get database connection status
+const getDBStatus = () => ({
+  connected: isConnected,
+  connecting: isConnecting,
+  error: connectionError?.message || null
+});
+
 module.exports = {
   sequelize,
-  connectDB
+  connectDB,
+  ensureDBConnection,
+  getDBStatus
 };
