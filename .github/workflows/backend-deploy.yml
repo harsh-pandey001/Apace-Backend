@@ -93,6 +93,7 @@ jobs:
             --update-secrets REDIS_PORT=REDIS_PORT:latest \
             --update-secrets REDIS_PASSWORD=REDIS_PASSWORD:latest \
             --update-secrets CORS_ORIGIN=CORS_ORIGIN:latest \
+            --service-account=86500976134-compute@developer.gserviceaccount.com \
             --timeout 300 \
             --concurrency 80
 
