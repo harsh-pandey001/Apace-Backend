@@ -8,7 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
  * Redirects to login if not authenticated
  */
 const ProtectedRoute = ({ children, adminOnly = false }) => {
-  const { isAuthenticated, user, loading, isAdmin } = useAuth();
+  const { isAuthenticated, loading, isAdmin } = useAuth();
   const location = useLocation();
 
   // Show loading indicator while checking authentication

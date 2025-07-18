@@ -12,9 +12,9 @@ import {
   Legend,
   Filler 
 } from 'chart.js';
-import { Line, Bar, Pie } from 'react-chartjs-2';
+import { Line, Pie } from 'react-chartjs-2';
 import { Box, Paper, Typography, ToggleButtonGroup, ToggleButton, useTheme } from '@mui/material';
-import { format, subDays, subMonths, eachDayOfInterval, eachWeekOfInterval, eachMonthOfInterval } from 'date-fns';
+import { format, subDays, subMonths } from 'date-fns';
 
 // Register ChartJS components
 ChartJS.register(

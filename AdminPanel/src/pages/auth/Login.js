@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import {
   Box,
-  Card,
-  CardContent,
   TextField,
   Button,
   Typography,
@@ -11,13 +9,12 @@ import {
   Container,
   Paper,
   InputAdornment,
-  IconButton,
   Divider,
+  CardContent,
 } from '@mui/material';
 import {
   Phone as PhoneIcon,
   Send as SendIcon,
-  ArrowForward as ArrowForwardIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import OtpVerification from './OtpVerification';

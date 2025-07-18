@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Container,
   Typography,
@@ -40,7 +40,6 @@ import {
   FilePresent as DocumentIcon,
   CheckCircle as ApproveIcon,
   Cancel as RejectIcon,
-  Download as DownloadIcon,
   Preview as PreviewIcon,
   Delete as DeleteIcon
 } from '@mui/icons-material';
@@ -84,7 +83,7 @@ const DriverDocuments = () => {
   });
 
   // Fetch documents
-  const fetchDocuments = async () => {
+  const fetchDocuments = useCallback(async () => {
     setLoading(true);
     try {
       // Use the service method which now properly handles optional status and search
@@ -103,7 +102,7 @@ const DriverDocuments = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, rowsPerPage, statusFilter, searchTerm]);
 
   // Fetch statistics
   const fetchStatistics = async () => {
@@ -117,7 +116,7 @@ const DriverDocuments = () => {
 
   useEffect(() => {
     fetchDocuments();
-  }, [page, rowsPerPage, statusFilter, searchTerm]);
+  }, [fetchDocuments]);
 
   useEffect(() => {
     fetchStatistics();

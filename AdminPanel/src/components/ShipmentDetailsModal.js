@@ -33,7 +33,6 @@ import {
   Inventory as InventoryIcon,
   Payments as PaymentsIcon,
   Print as PrintIcon,
-  Timeline as TimelineIcon,
   Info as InfoIcon
 } from '@mui/icons-material';
 import { getAdminShipmentDetails, formatDate } from '../services/shipmentService';

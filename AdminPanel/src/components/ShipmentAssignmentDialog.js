@@ -19,8 +19,7 @@ import {
 } from '@mui/material';
 import {
   Assignment as AssignmentIcon,
-  Person as PersonIcon,
-  DirectionsCar as VehicleIcon
+  Person as PersonIcon
 } from '@mui/icons-material';
 import { vehicleService } from '../services/vehicleService';
 // Removed MUI X Date Pickers due to compatibility issues

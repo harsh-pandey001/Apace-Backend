@@ -22,7 +22,7 @@ import ShipmentStatusChart from '../components/charts/ShipmentStatusChart';
 import ShipmentTrendsChart from '../components/charts/ShipmentTrendsChart';
 import NewUsersChart from '../components/charts/NewUsersChart';
 import useDashboardData from '../hooks/useDashboardData';
-import { formatDate } from '../services/shipmentService';
+// import { formatDate } from '../services/shipmentService';
 
 function Dashboard() {
   // Use our custom hook to fetch all dashboard data
@@ -31,8 +31,7 @@ function Dashboard() {
     error, 
     shipments, 
     shipmentMetrics,
-    userMetrics,
-    refreshData 
+    userMetrics
   } = useDashboardData(30000); // Refresh every 30 seconds
 
   // Get only the most recent 5 shipments for the table

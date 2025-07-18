@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getAdminShipments, calculateShipmentMetrics } from '../services/shipmentService';
 import userService from '../services/userService';
 import { format, subDays, parseISO } from 'date-fns';
@@ -25,8 +25,29 @@ const useDashboardData = (refreshInterval = 0) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Process user metrics
+  const processUserMetrics = useCallback((usersData) => {
+    if (!usersData.length) return;
+
+    // Calculate role distribution
+    const roleDistribution = usersData.reduce((acc, user) => {
+      const role = user.role || 'customer';
+      acc[role] = (acc[role] || 0) + 1;
+      return acc;
+    }, {});
+
+    // Calculate new users per day (last 7 days)
+    const newUsersPerDay = calculateNewUsersPerDay(usersData);
+
+    setUserMetrics({
+      totalUsers: usersData.length,
+      roleDistribution,
+      newUsersPerDay
+    });
+  }, []);
+
   // Function to fetch all dashboard data
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -53,28 +74,7 @@ const useDashboardData = (refreshInterval = 0) => {
     } finally {
       setLoading(false);
     }
-  };
-
-  // Process user metrics
-  const processUserMetrics = (usersData) => {
-    if (!usersData.length) return;
-
-    // Calculate role distribution
-    const roleDistribution = usersData.reduce((acc, user) => {
-      const role = user.role || 'customer';
-      acc[role] = (acc[role] || 0) + 1;
-      return acc;
-    }, {});
-
-    // Calculate new users per day (last 7 days)
-    const newUsersPerDay = calculateNewUsersPerDay(usersData);
-
-    setUserMetrics({
-      totalUsers: usersData.length,
-      roleDistribution,
-      newUsersPerDay
-    });
-  };
+  }, [processUserMetrics]);
 
   // Calculate new users per day for the last 7 days
   const calculateNewUsersPerDay = (usersData) => {
@@ -114,7 +114,7 @@ const useDashboardData = (refreshInterval = 0) => {
       // Clear interval on unmount
       return () => clearInterval(intervalId);
     }
-  }, [refreshInterval]);
+  }, [refreshInterval, fetchDashboardData]);
 
   return {
     loading,
