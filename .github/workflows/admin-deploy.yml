@@ -88,8 +88,7 @@ jobs:
             --max-instances 5 \
             --set-env-vars NODE_ENV=production \
             --timeout 300 \
-            --concurrency 80 \
-            --no-traffic
+            --concurrency 80
 
       - name: Get service URL
         run: |
@@ -114,9 +113,7 @@ jobs:
 
       - name: Promote to live traffic
         run: |
-          gcloud run services update-traffic ${{ env.SERVICE_NAME }} \
-            --region ${{ env.REGION }} \
-            --to-latest
+          echo "Service deployed directly to live traffic (new service)"
 
       - name: Cleanup old images
         run: |
