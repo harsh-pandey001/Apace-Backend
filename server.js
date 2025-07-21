@@ -299,13 +299,11 @@ const startServer = async () => {
       logger.info('Cache system disabled by configuration');
     }
     
-    // Only start the server if not in Vercel environment
-    if (!process.env.VERCEL) {
-      app.listen(PORT, '0.0.0.0', () => {
-        logger.info(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
-        logger.info('Database connection will be established on first API request');
-      });
-    }
+    // Start the server
+    app.listen(PORT, '0.0.0.0', () => {
+      logger.info(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+      logger.info('Database connection will be established on first API request');
+    });
   } catch (error) {
     logger.error('Failed to start server:', error);
     process.exit(1);
@@ -313,30 +311,7 @@ const startServer = async () => {
 };
 
 // Initialize server
-if (!process.env.VERCEL) {
-  startServer();
-} else {
-  // For Vercel, initialize Redis without starting server or connecting to database
-  const initializeVercel = async () => {
-    try {
-      logger.info('Initializing Vercel environment');
-      
-      // Initialize Redis for Vercel
-      if (process.env.CACHE_ENABLED !== 'false') {
-        try {
-          await redisConfig.connect();
-          logger.info('Cache system initialized for Vercel');
-        } catch (error) {
-          logger.warn('Cache system failed to initialize on Vercel:', error.message);
-        }
-      }
-    } catch (error) {
-      logger.error('Failed to initialize on Vercel:', error);
-    }
-  };
-  
-  initializeVercel();
-}
+startServer();
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err) => {

@@ -43,7 +43,8 @@
       "Bash(npm cache clean:*)",
       "Bash(sudo chown:*)",
       "Bash(npm audit:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(timeout 5s npm start)"
     ],
     "deny": []
   },
