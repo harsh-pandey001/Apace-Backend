@@ -576,3 +576,91 @@ exports.getAvailableDrivers = async (req, res, next) => {
     next(error);
   }
 };
+
+// Delete driver (admin only)
+exports.deleteDriver = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    // Find the driver
+    const driver = await Driver.findByPk(id, {
+      include: [
+        {
+          model: DriverDocument,
+          as: 'documents'
+        }
+      ]
+    });
+
+    if (!driver) {
+      return next(new AppError('Driver not found', 404));
+    }
+
+    // Store driver info for logging before deletion
+    const driverInfo = {
+      id: driver.id,
+      name: driver.name,
+      email: driver.email,
+      phone: driver.phone,
+      vehicleType: driver.vehicleType,
+      vehicleNumber: driver.vehicleNumber
+    };
+
+    // Check if driver has any active shipments or vehicles assigned
+    // This is a safety check to prevent deleting drivers with active bookings
+    const { Shipment, Vehicle } = require('../models');
+    
+    const activeShipments = await Shipment.findAll({
+      include: [
+        {
+          model: Vehicle,
+          as: 'vehicle',
+          where: { driverId: driver.id },
+          required: true
+        }
+      ],
+      where: {
+        status: { 
+          [Op.in]: ['pending', 'in_transit', 'out_for_delivery'] 
+        }
+      }
+    });
+
+    if (activeShipments.length > 0) {
+      const shipmentIds = activeShipments.map(s => s.trackingNumber).join(', ');
+      return next(new AppError(
+        `Cannot delete driver. Driver has ${activeShipments.length} active shipment(s): ${shipmentIds}. ` +
+        `Please wait for shipments to complete or reassign them before deleting the driver.`, 
+        409
+      ));
+    }
+
+    // Delete associated documents first (cascade delete should handle this, but being explicit)
+    if (driver.documents && driver.documents.length > 0) {
+      await DriverDocument.destroy({
+        where: { driverId: driver.id }
+      });
+    }
+
+    // Delete associated vehicles
+    await Vehicle.destroy({
+      where: { driverId: driver.id }
+    });
+
+    // Delete the driver
+    await driver.destroy();
+
+    logger.info('Driver deleted successfully', {
+      userId: req.user?.id,
+      deletedDriver: driverInfo
+    });
+
+    res.status(200).json({
+      status: 'success',
+      message: `Driver ${driverInfo.name} has been deleted successfully`
+    });
+  } catch (error) {
+    logger.error('Error deleting driver:', error);
+    next(new AppError('Failed to delete driver', 500));
+  }
+};

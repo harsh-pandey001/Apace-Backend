@@ -48,7 +48,8 @@
       "Bash(chmod:*)",
       "Bash(cp:*)",
       "Bash(./start-docker.sh:*)",
-      "Bash(./test-docker-setup.sh:*)"
+      "Bash(./test-docker-setup.sh:*)",
+      "Bash(./insert-production-vehicles.sh:*)"
     ],
     "deny": []
   },

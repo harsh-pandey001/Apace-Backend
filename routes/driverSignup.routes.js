@@ -9,7 +9,8 @@ const {
   updateDriverAvailability,
   getDriverProfile,
   updateDriverProfile,
-  getAvailableDrivers
+  getAvailableDrivers,
+  deleteDriver
 } = require('../controllers/driverSignup.controller');
 const { 
   validateDriverSignup, 
@@ -17,7 +18,7 @@ const {
   validateDriverAvailability,
   validateDriverProfileUpdate
 } = require('../validations/driverSignup.validation');
-const { protect } = require('../middleware/auth');
+const { protect, restrictTo } = require('../middleware/auth');
 const { 
   driverProfileCacheMiddleware, 
   clearDriverCacheMiddleware,
@@ -57,5 +58,21 @@ router.put('/:id/availability',
 
 // Get driver by ID (admin only) - generic route must come last (with caching)
 router.get('/:id', protect, driverCacheMiddleware('profile', 300), getDriverById);
+
+// Delete driver (admin only) - with cache invalidation
+router.delete('/:id', 
+  protect, 
+  restrictTo('admin'),
+  clearDriverCacheMiddleware({ 
+    dataTypes: ['profile', 'status'],
+    customInvalidation: async (req) => {
+      // Invalidate all driver-related cache when a driver is deleted
+      const driverId = req.params.id;
+      const driverCacheManager = require('../utils/driverCache');
+      await driverCacheManager.invalidateAllDriverCache(driverId);
+    }
+  }),
+  deleteDriver
+);
 
 module.exports = router;
