@@ -67,4 +67,10 @@ router.delete('/:vehicleId',
   vehicleTypeController.deleteVehicleType
 );
 
+// Get shipments using a specific vehicle type (admin only)
+router.get('/:vehicleId/shipments', 
+  getVehicleTypeValidation, 
+  vehicleTypeController.getShipmentsUsingVehicleType
+);
+
 module.exports = router;

@@ -5,7 +5,7 @@ const shipmentController = require('../controllers/shipment.controller');
 const { protect, restrictTo } = require('../middleware/auth');
 const { conditionalProtect } = require('../middleware/conditionalAuth');
 const { mapGuestShipmentFields } = require('../middleware/fieldMapping');
-const { createShipmentValidation, createGuestShipmentValidation, createUnifiedShipmentValidation } = require('../validations/shipment.validation');
+const { createGuestShipmentValidation, createUnifiedShipmentValidation } = require('../validations/shipment.validation');
 const { userCacheMiddleware, clearCacheMiddleware, resourceCacheMiddleware, publicCacheMiddleware } = require('../middleware/cache');
 const { driverShipmentsCacheMiddleware, invalidateDriverShipmentsMiddleware } = require('../middleware/driverCache');
 
@@ -54,7 +54,23 @@ router.post('/guest', guestLimiter, mapGuestShipmentFields, createGuestShipmentV
 router.get('/guest/:trackingNumber', trackingLimiter, publicCacheMiddleware('guest-tracking', 120), shipmentController.trackGuestShipment);
 
 // Unified booking endpoint that handles both authenticated and guest users
-router.post('/', unifiedBookingLimiter, mapGuestShipmentFields, createUnifiedShipmentValidation, conditionalProtect, shipmentController.createShipment);
+router.post('/', 
+  unifiedBookingLimiter, 
+  mapGuestShipmentFields, 
+  createUnifiedShipmentValidation, 
+  conditionalProtect,
+  clearCacheMiddleware({ 
+    userDataTypes: ['shipments'],
+    customInvalidation: async (req) => {
+      // Only invalidate cache for authenticated users (guest users don't have shipment cache)
+      if (req.body.userType === 'authenticated' && req.user?.id) {
+        const cacheManager = require('../utils/cache');
+        await cacheManager.invalidateUserCache(req.user.id, 'shipments');
+      }
+    }
+  }),
+  shipmentController.createShipment
+);
 
 // Protect all other routes
 router.use(protect);

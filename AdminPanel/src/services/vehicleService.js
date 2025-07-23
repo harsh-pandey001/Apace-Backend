@@ -89,6 +89,17 @@ export const vehicleService = {
       return response.data;
     } catch (error) {
       console.error(`Error deleting vehicle type ${id}:`, error);
+      
+      // Re-throw with additional context for better error handling
+      if (error.response?.status === 409) {
+        // 409 Conflict - Vehicle type is being used by shipments
+        const message = error.response.data?.message || 'Vehicle type cannot be deleted because it is being used by existing shipments.';
+        const enhancedError = new Error(message);
+        enhancedError.response = error.response;
+        enhancedError.status = 409;
+        throw enhancedError;
+      }
+      
       throw error;
     }
   },
@@ -232,6 +243,21 @@ export const vehicleService = {
           { label: 'E-Rickshaws', value: 'van', capacity: '200 kg', iconKey: 'tractor' }
         ]
       };
+    }
+  },
+
+  /**
+   * Get shipments using a specific vehicle type (Admin only)
+   * @param {string} vehicleId - Vehicle type ID
+   * @returns {Promise} - Promise with shipments data
+   */
+  getShipmentsUsingVehicleType: async (vehicleId) => {
+    try {
+      const response = await api.get(`/vehicles/${vehicleId}/shipments`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching shipments for vehicle type ${vehicleId}:`, error);
+      throw error;
     }
   }
 };

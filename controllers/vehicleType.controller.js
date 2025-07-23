@@ -329,15 +329,27 @@ exports.deleteVehicleType = async (req, res, next) => {
     };
     
     // Check if this vehicle type is being used in any shipments
-    const shipmentsUsingVehicleType = await Shipment.count({
-      where: { vehicleType: vehicleType.vehicleType }
+    const shipmentsUsingVehicleType = await Shipment.findAll({
+      where: { vehicleType: vehicleType.vehicleType },
+      attributes: ['id', 'trackingNumber', 'status', 'pickupAddress', 'deliveryAddress', 'createdAt'],
+      limit: 5 // Show up to 5 example shipments
     });
     
-    if (shipmentsUsingVehicleType > 0) {
-      return next(new AppError(
-        `Cannot delete vehicle type "${vehicleType.label}". It is currently being used by ${shipmentsUsingVehicleType} shipment(s). Please contact system administrator.`, 
-        409
-      ));
+    if (shipmentsUsingVehicleType.length > 0) {
+      // Create a detailed error message with shipment information
+      const shipmentCount = await Shipment.count({
+        where: { vehicleType: vehicleType.vehicleType }
+      });
+      
+      const shipmentDetails = shipmentsUsingVehicleType.map(shipment => 
+        `${shipment.trackingNumber} (${shipment.status})`
+      ).join(', ');
+      
+      const message = `Cannot delete vehicle type "${vehicleType.label}". It is currently being used by ${shipmentCount} shipment(s). ` +
+        `Examples: ${shipmentDetails}${shipmentCount > 5 ? ' and more...' : ''}. ` +
+        'Please wait for these shipments to complete or contact the system administrator to reassign them.';
+      
+      return next(new AppError(message, 409));
     }
     
     // Permanently delete from database
@@ -393,5 +405,54 @@ exports.getVehiclePricing = async (req, res, next) => {
   } catch (error) {
     logger.error('Error retrieving vehicle pricing:', error);
     next(new AppError('Failed to retrieve vehicle pricing', 500));
+  }
+};
+
+// Get shipments using a specific vehicle type (Admin only)
+exports.getShipmentsUsingVehicleType = async (req, res, next) => {
+  try {
+    const { vehicleId } = req.params;
+    
+    // Find vehicle type
+    const vehicleType = await VehicleType.findByPk(vehicleId);
+    
+    if (!vehicleType) {
+      return next(new AppError('Vehicle type not found', 404));
+    }
+    
+    // Get shipments using this vehicle type
+    const shipments = await Shipment.findAll({
+      where: { vehicleType: vehicleType.vehicleType },
+      attributes: [
+        'id', 
+        'trackingNumber', 
+        'status', 
+        'pickupAddress', 
+        'deliveryAddress', 
+        'createdAt',
+        'scheduledPickupDate',
+        'estimatedDeliveryDate'
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+    
+    res.json({
+      success: true,
+      data: {
+        vehicleType: vehicleType.vehicleType,
+        vehicleLabel: vehicleType.label,
+        shipmentCount: shipments.length,
+        shipments
+      }
+    });
+    
+    logger.info(`Retrieved ${shipments.length} shipments using vehicle type ${vehicleType.vehicleType}`, {
+      userId: req.user?.id,
+      vehicleTypeId: vehicleId
+    });
+    
+  } catch (error) {
+    logger.error('Error retrieving shipments for vehicle type:', error);
+    next(new AppError('Failed to retrieve shipments', 500));
   }
 };

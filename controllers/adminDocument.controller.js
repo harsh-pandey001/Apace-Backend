@@ -55,7 +55,7 @@ const adminDocumentController = {
         driver: doc.driverProfile || {
           // Ghost mode for deleted drivers
           id: doc.driver_id,
-          name: `Deleted Driver`,
+          name: 'Deleted Driver',
           email: null,
           phone: null,
           isActive: false,

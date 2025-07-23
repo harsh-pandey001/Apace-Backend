@@ -63,13 +63,13 @@ const findUserById = async (id) => {
 // Helper function to generate tokens
 const signToken = (id, role) => {
   return jwt.sign({ id, role }, process.env.JWT_SECRET, {
-    expiresIn: "24h"
+    expiresIn: '24h'
   });
 };
 
 const signRefreshToken = (id, role) => {
   return jwt.sign({ id, role }, process.env.JWT_REFRESH_SECRET, {
-    expiresIn: "7d"
+    expiresIn: '7d'
   });
 };
 
@@ -214,14 +214,14 @@ exports.signup = async (req, res, next) => {
     let Model;
     
     switch (userRole) {
-      case 'driver':
-        Model = Driver;
-        break;
-      case 'admin':
-        Model = Admin;
-        break;
-      default:
-        Model = User;
+    case 'driver':
+      Model = Driver;
+      break;
+    case 'admin':
+      Model = Admin;
+      break;
+    default:
+      Model = User;
     }
 
     // Create new user in the appropriate table

@@ -44,7 +44,11 @@
       "Bash(sudo chown:*)",
       "Bash(npm audit:*)",
       "Bash(git add:*)",
-      "Bash(timeout 5s npm start)"
+      "Bash(timeout 5s npm start)",
+      "Bash(chmod:*)",
+      "Bash(cp:*)",
+      "Bash(./start-docker.sh:*)",
+      "Bash(./test-docker-setup.sh:*)"
     ],
     "deny": []
   },

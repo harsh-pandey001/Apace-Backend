@@ -22,13 +22,13 @@ const findDriverById = async (id) => {
 // Helper function to generate tokens
 const signToken = (id, role = 'driver') => {
   return jwt.sign({ id, role }, process.env.JWT_SECRET, {
-    expiresIn: "24h"
+    expiresIn: '24h'
   });
 };
 
 const signRefreshToken = (id, role = 'driver') => {
   return jwt.sign({ id, role }, process.env.JWT_REFRESH_SECRET, {
-    expiresIn: "7d"
+    expiresIn: '7d'
   });
 };
 

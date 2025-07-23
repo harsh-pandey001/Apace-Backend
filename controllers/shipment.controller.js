@@ -73,6 +73,13 @@ exports.getUserShipments = async (req, res, next) => {
     // Build query conditions
     const whereConditions = { userId: req.user.id };
     
+    // Log the request for debugging
+    logger.info('Fetching user shipments', {
+      userId: req.user.id,
+      requestTimestamp: new Date().toISOString(),
+      filters: { status, fromDate, toDate, page, limit }
+    });
+    
     if (status) {
       whereConditions.status = status;
     }
@@ -102,6 +109,15 @@ exports.getUserShipments = async (req, res, next) => {
           attributes: ['id', 'vehicleNumber', 'type', 'model', 'licensePlate']
         }
       ]
+    });
+
+    // Log response for debugging
+    logger.info('Returning user shipments', {
+      userId: req.user.id,
+      shipmentsFound: shipments.length,
+      totalCount: count,
+      responseTimestamp: new Date().toISOString(),
+      latestShipmentTime: shipments.length > 0 ? shipments[0].createdAt : null
     });
 
     res.status(200).json({
@@ -202,7 +218,14 @@ exports.createShipment = async (req, res, next) => {
       ? `New guest shipment created: ${shipment.trackingNumber} for ${shipment.guestName}`
       : `New shipment created: ${shipment.trackingNumber} for user ${req.user.id}`;
     
-    logger.info(logMessage);
+    logger.info(logMessage, {
+      shipmentId: shipment.id,
+      trackingNumber: shipment.trackingNumber,
+      userId: req.user?.id,
+      userType: userType,
+      timestamp: shipment.createdAt,
+      debugTimestamp: new Date().toISOString()
+    });
 
     // Prepare response data
     const responseData = {

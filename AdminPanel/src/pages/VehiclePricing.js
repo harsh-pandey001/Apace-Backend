@@ -535,8 +535,22 @@ const VehiclePricing = () => {
       await fetchVehicleTypes();
       setSyncDialogOpen(true); // Show sync confirmation
     } catch (err) {
-      setError('Failed to delete vehicle type. Please try again.');
+      // Extract the specific error message from the backend response
+      const errorMessage = err.response?.data?.message || 
+                          err.response?.data?.error?.message || 
+                          err.message || 
+                          'Failed to delete vehicle type. Please try again.';
+      
+      // Check if it's a 409 conflict due to shipments using this vehicle type
+      if (err.response?.status === 409 && errorMessage.includes('shipment')) {
+        // Show enhanced error with option to view shipments
+        setError(`${errorMessage}\n\nTip: You can view which shipments are using this vehicle type to understand the dependency.`);
+      } else {
+        setError(errorMessage);
+      }
+      
       console.error('Error deleting vehicle:', err);
+      setDeleteDialogOpen(false); // Close dialog to show error message
     }
   };
 

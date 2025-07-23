@@ -35,8 +35,18 @@ const cacheMiddleware = (options = {}) => {
       const cachedData = await cacheManager.getFromCache(cacheKey);
       
       if (cachedData) {
-        logger.debug(`Serving cached response for: ${cacheKey}`);
+        logger.info(`🎯 CACHE HIT: ${cacheKey}`, {
+          userId: req.user?.id,
+          timestamp: new Date().toISOString(),
+          path: req.originalUrl
+        });
         return res.json(cachedData);
+      } else {
+        logger.info(`❌ CACHE MISS: ${cacheKey}`, {
+          userId: req.user?.id,
+          timestamp: new Date().toISOString(),
+          path: req.originalUrl
+        });
       }
 
       // Intercept response to cache it
@@ -117,9 +127,18 @@ const invalidateUserCache = async (userId, dataType = null) => {
     if (dataType) {
       const key = cacheManager.generateKey('user', dataType, userId);
       await cacheManager.invalidateCache(key);
+      logger.info(`🗑️ CACHE INVALIDATED: ${key}`, {
+        userId,
+        dataType,
+        timestamp: new Date().toISOString()
+      });
     } else {
       // Invalidate all user cache
       await cacheManager.invalidateUserCache(userId);
+      logger.info(`🗑️ CACHE INVALIDATED ALL: user:*:${userId}`, {
+        userId,
+        timestamp: new Date().toISOString()
+      });
     }
   } catch (error) {
     logger.error(`Failed to invalidate cache for user ${userId}:`, error);

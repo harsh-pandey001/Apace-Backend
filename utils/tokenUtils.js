@@ -38,7 +38,7 @@ const normalizeExpiry = (expiry) => {
  */
 exports.signToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: "24h"
+    expiresIn: '24h'
   });
 };
 
@@ -49,7 +49,7 @@ exports.signToken = (id) => {
  */
 exports.signRefreshToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_REFRESH_SECRET, {
-    expiresIn: "7d"
+    expiresIn: '7d'
   });
 };
 

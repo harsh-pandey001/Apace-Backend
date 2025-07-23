@@ -10,25 +10,25 @@ const findUserByIdAndRole = async (id, role) => {
   let user;
   
   switch (role) {
-    case 'driver':
-      user = await Driver.findByPk(id);
-      if (user) {
-        return { user, role: 'driver', activeField: 'isActive' };
-      }
-      break;
-    case 'admin':
-      user = await Admin.findByPk(id);
-      if (user) {
-        return { user, role: 'admin', activeField: 'active' };
-      }
-      break;
-    case 'user':
-    default:
-      user = await User.findByPk(id);
-      if (user) {
-        return { user, role: 'user', activeField: 'active' };
-      }
-      break;
+  case 'driver':
+    user = await Driver.findByPk(id);
+    if (user) {
+      return { user, role: 'driver', activeField: 'isActive' };
+    }
+    break;
+  case 'admin':
+    user = await Admin.findByPk(id);
+    if (user) {
+      return { user, role: 'admin', activeField: 'active' };
+    }
+    break;
+  case 'user':
+  default:
+    user = await User.findByPk(id);
+    if (user) {
+      return { user, role: 'user', activeField: 'active' };
+    }
+    break;
   }
   
   return null;
@@ -65,7 +65,7 @@ exports.protect = async (req, res, next) => {
       decoded = jwt.verify(token, process.env.JWT_SECRET);
       logger.info(`✅ Token verified successfully. User ID: ${decoded.id}, Role: ${decoded.role || 'legacy'}`);
     } catch (verifyError) {
-      logger.error(`❌ JWT Verification failed:`, {
+      logger.error('❌ JWT Verification failed:', {
         error: verifyError.name,
         message: verifyError.message,
         expiredAt: verifyError.expiredAt,
