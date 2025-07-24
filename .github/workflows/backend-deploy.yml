@@ -107,32 +107,6 @@ jobs:
           echo "Backend deployed to: $SERVICE_URL"
           echo "SERVICE_URL=$SERVICE_URL" >> $GITHUB_ENV
 
-      - name: Run database migrations
-        run: |
-          # Create a temporary service account for migrations
-          gcloud run jobs create migration-job-${{ github.sha }} \
-            --image gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
-            --region ${{ env.REGION }} \
-            --memory 512Mi \
-            --cpu 1000m \
-            --set-env-vars NODE_ENV=production \
-            --set-env-vars DATABASE_HOST=${{ secrets.DATABASE_HOST }} \
-            --set-env-vars DATABASE_PORT=${{ secrets.DATABASE_PORT }} \
-            --set-env-vars DATABASE_USER=${{ secrets.DATABASE_USER }} \
-            --set-env-vars DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }} \
-            --set-env-vars DATABASE_NAME=${{ secrets.DATABASE_NAME }} \
-            --command npm \
-            --args run,db:migrate || true
-
-          # Run the migration job
-          gcloud run jobs execute migration-job-${{ github.sha }} \
-            --region ${{ env.REGION }} \
-            --wait || true
-
-          # Clean up migration job
-          gcloud run jobs delete migration-job-${{ github.sha }} \
-            --region ${{ env.REGION }} \
-            --quiet || true
 
       - name: Run smoke tests
         run: |
