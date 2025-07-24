@@ -111,6 +111,7 @@ router.patch(
   restrictTo('admin'),
   [
     body('driverId').isUUID().withMessage('Valid driver ID is required'),
+    body('vehicleId').optional().isUUID().withMessage('Vehicle ID must be a valid UUID'),
     body('estimatedDeliveryDate').optional().isISO8601().withMessage('Estimated delivery date must be a valid date'),
     body('notes').optional().isString().withMessage('Notes must be a string')
   ],

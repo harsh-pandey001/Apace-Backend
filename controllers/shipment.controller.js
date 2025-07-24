@@ -623,7 +623,7 @@ exports.assignShipment = async (req, res, next) => {
       });
     }
 
-    const { driverId } = req.body;
+    const { driverId, vehicleId, estimatedDeliveryDate, notes } = req.body;
 
     if (!driverId) {
       return next(new AppError('Driver ID is required', 400));
@@ -667,53 +667,89 @@ exports.assignShipment = async (req, res, next) => {
       return next(new AppError(`Driver's vehicle type (${driver.vehicleType}) does not match shipment's vehicle type (${shipment.vehicleType})`, 400));
     }
 
-    // Create or find a vehicle record for this driver (if not exists)
-    let vehicle = await Vehicle.findOne({
-      where: {
-        driverId: driver.id,
-        vehicleNumber: driver.vehicleNumber
-      }
-    });
-
-    if (!vehicle) {
-      // Map driver vehicle types to vehicle model types
-      const vehicleTypeMapping = {
-        'bike': 'motorcycle',
-        'motorcycle': 'motorcycle',
-        'car': 'car',
-        'van': 'van',
-        'truck': 'truck',
-        'mini_truck': 'truck'
-      };
+    // Handle vehicle assignment - support both explicit vehicleId and driver-based assignment
+    let vehicle;
+    
+    if (vehicleId) {
+      // Case 1: Explicit vehicle ID provided (new admin panel approach)
+      vehicle = await Vehicle.findByPk(vehicleId);
       
-      const mappedVehicleType = vehicleTypeMapping[driver.vehicleType.toLowerCase()] || 'car';
-      
-      // Parse capacity and weight from driver data, with defaults
-      let capacity = null;
-      let maxWeight = null;
-      
-      if (driver.vehicleCapacity && !isNaN(parseFloat(driver.vehicleCapacity))) {
-        capacity = parseFloat(driver.vehicleCapacity);
-        maxWeight = parseFloat(driver.vehicleCapacity);
+      if (!vehicle) {
+        return next(new AppError('Vehicle not found', 404));
       }
       
-      // Create vehicle record from driver information
-      vehicle = await Vehicle.create({
-        vehicleNumber: driver.vehicleNumber,
-        type: mappedVehicleType,
-        model: driver.vehicleType, // Use original vehicle type as model
-        licensePlate: driver.vehicleNumber, // Use vehicle number as license plate for now
-        capacity: capacity,
-        maxWeight: maxWeight,
-        driverId: driver.id,
-        status: 'available'
+      // Verify the vehicle belongs to the specified driver
+      if (vehicle.driverId !== driver.id) {
+        return next(new AppError('Vehicle does not belong to the specified driver', 400));
+      }
+      
+      logger.info(`Using explicitly specified vehicle: ${vehicle.vehicleNumber} for driver ${driver.name}`);
+      
+    } else {
+      // Case 2: Driver-based assignment (current approach - find or create vehicle)
+      vehicle = await Vehicle.findOne({
+        where: {
+          driverId: driver.id,
+          vehicleNumber: driver.vehicleNumber
+        }
       });
+
+      if (!vehicle) {
+        // Map driver vehicle types to vehicle model types
+        const vehicleTypeMapping = {
+          'bike': 'motorcycle',
+          'motorcycle': 'motorcycle',
+          'car': 'car',
+          'van': 'van',
+          'truck': 'truck',
+          'mini_truck': 'truck'
+        };
+        
+        const mappedVehicleType = vehicleTypeMapping[driver.vehicleType.toLowerCase()] || 'car';
+        
+        // Parse capacity and weight from driver data, with defaults
+        let capacity = null;
+        let maxWeight = null;
+        
+        if (driver.vehicleCapacity && !isNaN(parseFloat(driver.vehicleCapacity))) {
+          capacity = parseFloat(driver.vehicleCapacity);
+          maxWeight = parseFloat(driver.vehicleCapacity);
+        }
+        
+        // Create vehicle record from driver information
+        vehicle = await Vehicle.create({
+          vehicleNumber: driver.vehicleNumber,
+          type: mappedVehicleType,
+          model: driver.vehicleType, // Use original vehicle type as model
+          licensePlate: driver.vehicleNumber, // Use vehicle number as license plate for now
+          capacity: capacity,
+          maxWeight: maxWeight,
+          driverId: driver.id,
+          status: 'available'
+        });
+        
+        logger.info(`Created new vehicle record: ${vehicle.vehicleNumber} for driver ${driver.name}`);
+      } else {
+        logger.info(`Using existing vehicle: ${vehicle.vehicleNumber} for driver ${driver.name}`);
+      }
     }
 
-    // Assign vehicle to shipment (keep status as pending until pickup starts)
-    await shipment.update({ 
+    // Prepare shipment update data
+    const updateData = { 
       vehicleId: vehicle.id
-    });
+    };
+    
+    // Add optional fields if provided
+    if (estimatedDeliveryDate) {
+      updateData.estimatedDeliveryDate = estimatedDeliveryDate;
+    }
+    
+    if (notes) {
+      updateData.notes = notes;
+    }
+    
+    // Assign vehicle to shipment (keep status as pending until pickup starts)
+    await shipment.update(updateData);
     
     logger.info(`Admin assigned shipment ${shipment.trackingNumber} to driver ${driver.name} (${driver.vehicleNumber})`);
 
