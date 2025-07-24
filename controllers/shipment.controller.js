@@ -614,9 +614,46 @@ exports.deleteShipment = async (req, res, next) => {
 // Assign a shipment to a driver (admin)
 exports.assignShipment = async (req, res, next) => {
   try {
+    // 🔍 DEEP INSPECTION: Log all incoming request data
+    logger.info('🔍 ASSIGN SHIPMENT DEBUG - Request received:', {
+      method: req.method,
+      url: req.url,
+      params: req.params,
+      body: req.body,
+      headers: {
+        authorization: req.headers.authorization ? `Bearer ${req.headers.authorization.substring(7, 20)}...` : 'none',
+        'content-type': req.headers['content-type']
+      },
+      user: req.user ? { id: req.user.id, role: req.user.role } : 'none',
+      timestamp: new Date().toISOString()
+    });
+
+    // 🔍 DEEP INSPECTION: Environment and DB config check
+    logger.info('🔍 ASSIGN SHIPMENT DEBUG - Environment check:', {
+      NODE_ENV: process.env.NODE_ENV,
+      DATABASE_HOST: process.env.DATABASE_HOST ? 'configured' : 'missing',
+      DATABASE_NAME: process.env.DATABASE_NAME ? 'configured' : 'missing',
+      JWT_SECRET: process.env.JWT_SECRET ? 'configured' : 'missing',
+      JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN,
+      serverTime: new Date().toISOString()
+    });
+
+    // 🔍 DEEP INSPECTION: Test database connection
+    try {
+      const { sequelize } = require('../models');
+      await sequelize.authenticate();
+      logger.info('🔍 ASSIGN SHIPMENT DEBUG - Database connection test: SUCCESS');
+    } catch (dbTestError) {
+      logger.error('🔍 ASSIGN SHIPMENT DEBUG - Database connection test: FAILED', {
+        error: dbTestError.message,
+        stack: dbTestError.stack
+      });
+    }
+
     // Check for validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      logger.error('🔍 ASSIGN SHIPMENT DEBUG - Validation errors:', errors.array());
       return res.status(400).json({
         status: 'fail',
         errors: errors.array()
@@ -625,37 +662,95 @@ exports.assignShipment = async (req, res, next) => {
 
     const { driverId, vehicleId, estimatedDeliveryDate, notes } = req.body;
 
+    logger.info('🔍 ASSIGN SHIPMENT DEBUG - Extracted data:', {
+      driverId,
+      vehicleId,
+      estimatedDeliveryDate,
+      notes,
+      shipmentId: req.params.id
+    });
+
     if (!driverId) {
+      logger.error('🔍 ASSIGN SHIPMENT DEBUG - Missing driver ID');
       return next(new AppError('Driver ID is required', 400));
     }
 
     // Find the driver and verify they have verified documents
-    const driver = await Driver.findByPk(driverId, {
-      include: [
-        {
-          model: DriverDocument,
-          as: 'documents',
-          where: {
-            status: 'verified'
-          },
-          required: true
-        }
-      ]
+    logger.info('🔍 ASSIGN SHIPMENT DEBUG - Looking up driver:', { driverId });
+    
+    let driver;
+    try {
+      driver = await Driver.findByPk(driverId, {
+        include: [
+          {
+            model: DriverDocument,
+            as: 'documents',
+            where: {
+              status: 'verified'
+            },
+            required: true
+          }
+        ]
+      });
+    } catch (driverLookupError) {
+      logger.error('🔍 ASSIGN SHIPMENT DEBUG - Driver lookup error:', {
+        error: driverLookupError.message,
+        stack: driverLookupError.stack,
+        driverId
+      });
+      throw driverLookupError;
+    }
+
+    logger.info('🔍 ASSIGN SHIPMENT DEBUG - Driver lookup result:', {
+      found: !!driver,
+      driverData: driver ? {
+        id: driver.id,
+        name: driver.name,
+        isActive: driver.isActive,
+        vehicleType: driver.vehicleType,
+        documentsCount: driver.documents ? driver.documents.length : 0
+      } : null
     });
 
     if (!driver) {
+      logger.error('🔍 ASSIGN SHIPMENT DEBUG - Driver not found or documents not verified');
       return next(new AppError('Driver not found or documents not verified', 404));
     }
 
     // Check if driver is active and available
     if (!driver.isActive) {
+      logger.error('🔍 ASSIGN SHIPMENT DEBUG - Driver is not active');
       return next(new AppError('Driver is not active', 400));
     }
 
     // Find shipment
-    const shipment = await Shipment.findByPk(req.params.id);
+    logger.info('🔍 ASSIGN SHIPMENT DEBUG - Looking up shipment:', { shipmentId: req.params.id });
+    
+    let shipment;
+    try {
+      shipment = await Shipment.findByPk(req.params.id);
+    } catch (shipmentLookupError) {
+      logger.error('🔍 ASSIGN SHIPMENT DEBUG - Shipment lookup error:', {
+        error: shipmentLookupError.message,
+        stack: shipmentLookupError.stack,
+        shipmentId: req.params.id
+      });
+      throw shipmentLookupError;
+    }
+    
+    logger.info('🔍 ASSIGN SHIPMENT DEBUG - Shipment lookup result:', {
+      found: !!shipment,
+      shipmentData: shipment ? {
+        id: shipment.id,
+        trackingNumber: shipment.trackingNumber,
+        status: shipment.status,
+        vehicleType: shipment.vehicleType,
+        vehicleId: shipment.vehicleId
+      } : null
+    });
     
     if (!shipment) {
+      logger.error('🔍 ASSIGN SHIPMENT DEBUG - Shipment not found');
       return next(new AppError('Shipment not found', 404));
     }
 
@@ -798,7 +893,40 @@ exports.assignShipment = async (req, res, next) => {
       }
     });
   } catch (error) {
-    next(error);
+    // 🔍 DEEP INSPECTION: Comprehensive error logging as requested
+    logger.error("🔍 ASSIGN SHIPMENT DEBUG - Assign shipment failed:", {
+      message: error.message,
+      stack: error.stack,
+      name: error.name,
+      shipmentId: req.params.id,
+      driverId: req.body?.driverId,
+      vehicleId: req.body?.vehicleId,
+      estimatedDeliveryDate: req.body?.estimatedDeliveryDate,
+      notes: req.body?.notes,
+      user: req.user ? { id: req.user.id, role: req.user.role } : null,
+      timestamp: new Date().toISOString(),
+      // Additional context
+      url: req.url,
+      method: req.method,
+      headers: {
+        'content-type': req.headers['content-type'],
+        'user-agent': req.headers['user-agent']
+      }
+    });
+    
+    // Return detailed error for debugging (only in development, generic in production)
+    if (process.env.NODE_ENV === 'development') {
+      return res.status(500).json({ 
+        message: "Internal Server Error", 
+        details: error.message,
+        stack: error.stack
+      });
+    } else {
+      return res.status(500).json({ 
+        message: "Internal Server Error", 
+        details: error.message 
+      });
+    }
   }
 };
 
