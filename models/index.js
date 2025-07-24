@@ -37,7 +37,7 @@ User.hasMany(Vehicle, { foreignKey: 'driverId', as: 'vehicles' });
 Driver.hasMany(Vehicle, { foreignKey: 'driverId', as: 'driverVehicles' });
 Vehicle.belongsTo(Driver, { foreignKey: 'driverId', as: 'driverOwner' });
 
-Driver.hasOne(DriverDocument, { foreignKey: 'driver_id', as: 'documents' });
+Driver.hasMany(DriverDocument, { foreignKey: 'driver_id', as: 'documents' });
 DriverDocument.belongsTo(Driver, { foreignKey: 'driver_id', as: 'driverProfile' });
 
 module.exports = {

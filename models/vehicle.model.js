@@ -55,7 +55,7 @@ const Vehicle = sequelize.define('Vehicle', {
     type: DataTypes.UUID,
     allowNull: true,
     references: {
-      model: 'users',
+      model: 'drivers',
       key: 'id'
     }
   },
