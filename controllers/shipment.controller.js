@@ -717,16 +717,21 @@ exports.assignShipment = async (req, res, next) => {
         }
         
         // Create vehicle record from driver information
-        vehicle = await Vehicle.create({
-          vehicleNumber: driver.vehicleNumber,
-          type: mappedVehicleType,
-          model: driver.vehicleType, // Use original vehicle type as model
-          licensePlate: driver.vehicleNumber, // Use vehicle number as license plate for now
-          capacity: capacity,
-          maxWeight: maxWeight,
-          driverId: driver.id,
-          status: 'available'
-        });
+        try {
+          vehicle = await Vehicle.create({
+            vehicleNumber: driver.vehicleNumber,
+            type: mappedVehicleType,
+            model: driver.vehicleType, // Use original vehicle type as model
+            licensePlate: driver.vehicleNumber, // Use vehicle number as license plate for now
+            capacity: capacity,
+            maxWeight: maxWeight,
+            driverId: driver.id,
+            status: 'available'
+          });
+        } catch (vehicleCreateError) {
+          logger.error(`Failed to create vehicle for driver ${driver.name}:`, vehicleCreateError);
+          throw new AppError(`Failed to create vehicle record: ${vehicleCreateError.message}`, 500);
+        }
         
         logger.info(`Created new vehicle record: ${vehicle.vehicleNumber} for driver ${driver.name}`);
       } else {
@@ -749,7 +754,13 @@ exports.assignShipment = async (req, res, next) => {
     }
     
     // Assign vehicle to shipment (keep status as pending until pickup starts)
-    await shipment.update(updateData);
+    try {
+      await shipment.update(updateData);
+      logger.info(`Successfully updated shipment ${shipment.trackingNumber} with vehicle ${vehicle.id}`);
+    } catch (updateError) {
+      logger.error(`Failed to update shipment ${shipment.trackingNumber}:`, updateError);
+      throw new AppError(`Failed to assign vehicle to shipment: ${updateError.message}`, 500);
+    }
     
     logger.info(`Admin assigned shipment ${shipment.trackingNumber} to driver ${driver.name} (${driver.vehicleNumber})`);
 

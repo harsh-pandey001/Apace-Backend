@@ -579,6 +579,9 @@ exports.getAvailableDrivers = async (req, res, next) => {
 
 // Delete driver (admin only)
 exports.deleteDriver = async (req, res, next) => {
+  const { sequelize } = require('../models');
+  const transaction = await sequelize.transaction();
+  
   try {
     const { id } = req.params;
 
@@ -589,10 +592,12 @@ exports.deleteDriver = async (req, res, next) => {
           model: DriverDocument,
           as: 'documents'
         }
-      ]
+      ],
+      transaction
     });
 
     if (!driver) {
+      await transaction.rollback();
       return next(new AppError('Driver not found', 404));
     }
 
@@ -606,49 +611,85 @@ exports.deleteDriver = async (req, res, next) => {
       vehicleNumber: driver.vehicleNumber
     };
 
+    logger.info(`Starting deletion process for driver: ${driverInfo.name} (${driverInfo.id})`);
+
     // Check if driver has any active shipments or vehicles assigned
     // This is a safety check to prevent deleting drivers with active bookings
     const { Shipment, Vehicle } = require('../models');
     
-    const activeShipments = await Shipment.findAll({
-      include: [
-        {
-          model: Vehicle,
-          as: 'vehicle',
-          where: { driverId: driver.id },
-          required: true
-        }
-      ],
-      where: {
-        status: { 
-          [Op.in]: ['pending', 'in_transit', 'out_for_delivery'] 
-        }
-      }
-    });
+    try {
+      const activeShipments = await Shipment.findAll({
+        include: [
+          {
+            model: Vehicle,
+            as: 'vehicle',
+            where: { driverId: driver.id },
+            required: true
+          }
+        ],
+        where: {
+          status: { 
+            [Op.in]: ['pending', 'in_transit', 'out_for_delivery'] 
+          }
+        },
+        transaction
+      });
 
-    if (activeShipments.length > 0) {
-      const shipmentIds = activeShipments.map(s => s.trackingNumber).join(', ');
-      return next(new AppError(
-        `Cannot delete driver. Driver has ${activeShipments.length} active shipment(s): ${shipmentIds}. ` +
-        `Please wait for shipments to complete or reassign them before deleting the driver.`, 
-        409
-      ));
+      if (activeShipments.length > 0) {
+        await transaction.rollback();
+        const shipmentIds = activeShipments.map(s => s.trackingNumber).join(', ');
+        return next(new AppError(
+          `Cannot delete driver. Driver has ${activeShipments.length} active shipment(s): ${shipmentIds}. ` +
+          `Please wait for shipments to complete or reassign them before deleting the driver.`, 
+          409
+        ));
+      }
+    } catch (shipmentCheckError) {
+      await transaction.rollback();
+      logger.error(`Error checking active shipments for driver ${driverInfo.id}:`, shipmentCheckError);
+      return next(new AppError(`Failed to check active shipments: ${shipmentCheckError.message}`, 500));
     }
 
     // Delete associated documents first (cascade delete should handle this, but being explicit)
-    if (driver.documents && driver.documents.length > 0) {
-      await DriverDocument.destroy({
-        where: { driverId: driver.id }
-      });
+    try {
+      if (driver.documents && driver.documents.length > 0) {
+        const documentDeleteResult = await DriverDocument.destroy({
+          where: { driverId: driver.id },
+          transaction
+        });
+        logger.info(`Deleted ${documentDeleteResult} driver documents for driver ${driverInfo.id}`);
+      }
+    } catch (documentDeleteError) {
+      await transaction.rollback();
+      logger.error(`Error deleting documents for driver ${driverInfo.id}:`, documentDeleteError);
+      return next(new AppError(`Failed to delete driver documents: ${documentDeleteError.message}`, 500));
     }
 
     // Delete associated vehicles
-    await Vehicle.destroy({
-      where: { driverId: driver.id }
-    });
+    try {
+      const vehicleDeleteResult = await Vehicle.destroy({
+        where: { driverId: driver.id },
+        transaction
+      });
+      logger.info(`Deleted ${vehicleDeleteResult} vehicles for driver ${driverInfo.id}`);
+    } catch (vehicleDeleteError) {
+      await transaction.rollback();
+      logger.error(`Error deleting vehicles for driver ${driverInfo.id}:`, vehicleDeleteError);
+      return next(new AppError(`Failed to delete driver vehicles: ${vehicleDeleteError.message}`, 500));
+    }
 
     // Delete the driver
-    await driver.destroy();
+    try {
+      await driver.destroy({ transaction });
+      logger.info(`Successfully deleted driver record for ${driverInfo.id}`);
+    } catch (driverDeleteError) {
+      await transaction.rollback();
+      logger.error(`Error deleting driver record ${driverInfo.id}:`, driverDeleteError);
+      return next(new AppError(`Failed to delete driver record: ${driverDeleteError.message}`, 500));
+    }
+
+    // Commit the transaction
+    await transaction.commit();
 
     logger.info('Driver deleted successfully', {
       userId: req.user?.id,
@@ -660,7 +701,8 @@ exports.deleteDriver = async (req, res, next) => {
       message: `Driver ${driverInfo.name} has been deleted successfully`
     });
   } catch (error) {
+    await transaction.rollback();
     logger.error('Error deleting driver:', error);
-    next(new AppError('Failed to delete driver', 500));
+    next(new AppError(`Failed to delete driver: ${error.message}`, 500));
   }
 };
