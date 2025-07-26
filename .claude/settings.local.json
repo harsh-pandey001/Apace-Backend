@@ -49,7 +49,20 @@
       "Bash(cp:*)",
       "Bash(./start-docker.sh:*)",
       "Bash(./test-docker-setup.sh:*)",
-      "Bash(./insert-production-vehicles.sh:*)"
+      "Bash(./insert-production-vehicles.sh:*)",
+      "Bash(true)",
+      "Bash(CACHE_ENABLED=false npm run dev)",
+      "Bash(./start-local-db.sh:*)",
+      "Bash(open:*)",
+      "Bash(./wait-for-docker.sh:*)",
+      "Bash(./check-docker-status.sh:*)",
+      "Bash(./restart-everything.sh:*)",
+      "Bash(brew:*)",
+      "Bash(./wait-for-docker-mysql.sh:*)",
+      "Bash(./complete-setup.sh:*)",
+      "Bash(./quick-fix-server.sh:*)",
+      "Bash(./start-docker-mysql.sh:*)",
+      "Bash(PORT=5001 npm run dev)"
     ],
     "deny": []
   },
