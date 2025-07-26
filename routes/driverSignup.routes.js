@@ -24,6 +24,7 @@ const {
   clearDriverCacheMiddleware,
   driverCacheMiddleware
 } = require('../middleware/driverCache');
+const driverCacheManager = require('../utils/driverCache');
 
 // Driver signup route (public) - without OTP verification
 router.post('/signup', validateDriverSignupNoOTP, driverSignupNoOTP);
@@ -68,7 +69,6 @@ router.delete('/:id',
     customInvalidation: async (req) => {
       // Invalidate all driver-related cache when a driver is deleted
       const driverId = req.params.id;
-      const driverCacheManager = require('../utils/driverCache');
       await driverCacheManager.invalidateAllDriverCache(driverId);
     }
   }),
