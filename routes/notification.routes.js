@@ -1,7 +1,18 @@
 const express = require('express');
 const router = express.Router();
 
-const notificationController = require('../controllers/notification.controller');
+// Debug controller loading
+let notificationController;
+try {
+  console.log('🔍 Loading notification controller...');
+  notificationController = require('../controllers/notification.controller');
+  console.log('✓ Notification controller loaded successfully');
+  console.log('✓ registerToken method:', typeof notificationController.registerToken);
+} catch (error) {
+  console.error('❌ Failed to load notification controller:', error.message);
+  console.error('Stack:', error.stack);
+  throw error;
+}
 const authMiddleware = require('../middleware/auth');
 const {
   registerTokenValidation,
