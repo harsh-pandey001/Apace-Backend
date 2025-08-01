@@ -1,17 +1,28 @@
 const express = require('express');
 const router = express.Router();
 
-// Debug controller loading
+// Load controller with fallback
 let notificationController;
 try {
   console.log('🔍 Loading notification controller...');
   notificationController = require('../controllers/notification.controller');
   console.log('✓ Notification controller loaded successfully');
-  console.log('✓ registerToken method:', typeof notificationController.registerToken);
 } catch (error) {
-  console.error('❌ Failed to load notification controller:', error.message);
-  console.error('Stack:', error.stack);
-  throw error;
+  console.error('❌ Failed to load notification controller, using fallback:', error.message);
+  
+  // Provide fallback controller methods
+  notificationController = {
+    registerToken: (req, res) => res.status(503).json({ success: false, message: 'Notification service temporarily unavailable' }),
+    removeToken: (req, res) => res.status(503).json({ success: false, message: 'Notification service temporarily unavailable' }),
+    getDeviceTokens: (req, res) => res.status(503).json({ success: false, message: 'Notification service temporarily unavailable' }),
+    getNotificationHistory: (req, res) => res.status(503).json({ success: false, message: 'Notification service temporarily unavailable' }),
+    markAsRead: (req, res) => res.status(503).json({ success: false, message: 'Notification service temporarily unavailable' }),
+    subscribeToTopic: (req, res) => res.status(503).json({ success: false, message: 'Notification service temporarily unavailable' }),
+    unsubscribeFromTopic: (req, res) => res.status(503).json({ success: false, message: 'Notification service temporarily unavailable' }),
+    getStatus: (req, res) => res.status(503).json({ success: false, message: 'Notification service temporarily unavailable' }),
+    sendNotification: (req, res) => res.status(503).json({ success: false, message: 'Notification service temporarily unavailable' }),
+    sendTestNotification: (req, res) => res.status(503).json({ success: false, message: 'Notification service temporarily unavailable' })
+  };
 }
 const authMiddleware = require('../middleware/auth');
 const {
