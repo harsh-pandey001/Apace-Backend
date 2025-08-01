@@ -7,17 +7,21 @@ RUN apk add --no-cache bash
 # Set working directory
 WORKDIR /app
 
-# Copy package files
+# Copy package files first for better caching
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install ALL dependencies (including dev) for debugging
+RUN npm install
 
 # Copy application files
 COPY . .
 
 # Create uploads directory
 RUN mkdir -p uploads
+
+# Add startup test
+COPY test-startup.js ./
+RUN node test-startup.js
 
 # Expose port
 EXPOSE 5000
