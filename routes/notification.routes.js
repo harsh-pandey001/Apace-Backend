@@ -7,6 +7,8 @@ try {
   console.log('🔍 Loading notification controller...');
   notificationController = require('../controllers/notification.controller');
   console.log('✓ Notification controller loaded successfully');
+  console.log('✓ registerToken type:', typeof notificationController.registerToken);
+  console.log('✓ Available methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(notificationController)));
 } catch (error) {
   console.error('❌ Failed to load notification controller, using fallback:', error.message);
   
