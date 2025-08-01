@@ -27,7 +27,7 @@ for (const envVar of requiredEnvVars) {
 logger.info(`JWT Configuration - Access Token: ${process.env.JWT_EXPIRES_IN}, Refresh Token: ${process.env.REFRESH_TOKEN_EXPIRES_IN}`);
 logger.info(`FCM Configuration - Enabled: ${process.env.FCM_ENABLED || 'false'}`);
 
-// Import routes
+// routes
 const authRoutes = require('./routes/auth.routes');
 const userRoutes = require('./routes/user.routes');
 const shipmentRoutes = require('./routes/shipment.routes');
