@@ -5,10 +5,24 @@ const router = express.Router();
 let notificationController;
 try {
   console.log('🔍 Loading notification controller...');
-  notificationController = require('../controllers/notification.controller');
+  const controller = require('../controllers/notification.controller');
   console.log('✓ Notification controller loaded successfully');
-  console.log('✓ registerToken type:', typeof notificationController.registerToken);
-  console.log('✓ Available methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(notificationController)));
+  console.log('✓ registerToken type:', typeof controller.registerToken);
+  
+  // Bind all methods properly to avoid 'this' context issues
+  notificationController = {
+    registerToken: controller.registerToken.bind(controller),
+    removeToken: controller.removeToken.bind(controller),
+    getDeviceTokens: controller.getDeviceTokens.bind(controller),
+    getNotificationHistory: controller.getNotificationHistory.bind(controller),
+    markAsRead: controller.markAsRead.bind(controller),
+    subscribeToTopic: controller.subscribeToTopic.bind(controller),
+    unsubscribeFromTopic: controller.unsubscribeFromTopic.bind(controller),
+    getStatus: controller.getStatus.bind(controller),
+    sendNotification: controller.sendNotification.bind(controller),
+    sendTestNotification: controller.sendTestNotification.bind(controller)
+  };
+  console.log('✓ Methods bound successfully');
 } catch (error) {
   console.error('❌ Failed to load notification controller, using fallback:', error.message);
   
