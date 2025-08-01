@@ -25,6 +25,27 @@ try {
   };
 }
 const authMiddleware = require('../middleware/auth');
+
+// Load validations with fallback
+let validations;
+try {
+  validations = require('../validations/notification.validation');
+  console.log('✓ Notification validations loaded');
+} catch (error) {
+  console.error('❌ Failed to load notification validations:', error.message);
+  // Provide empty validation arrays as fallback
+  validations = {
+    registerTokenValidation: [],
+    removeTokenValidation: [],
+    sendNotificationValidation: [],
+    notificationHistoryValidation: [],
+    markAsReadValidation: [],
+    sendTestNotificationValidation: [],
+    subscribeToTopicValidation: [],
+    unsubscribeFromTopicValidation: []
+  };
+}
+
 const {
   registerTokenValidation,
   removeTokenValidation,
@@ -34,7 +55,7 @@ const {
   sendTestNotificationValidation,
   subscribeToTopicValidation,
   unsubscribeFromTopicValidation
-} = require('../validations/notification.validation');
+} = validations;
 
 // Middleware to check if user is authenticated
 const requireAuth = authMiddleware.authenticateToken;
