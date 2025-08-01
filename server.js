@@ -38,6 +38,7 @@ const driverSignupRoutes = require('./routes/driverSignup.routes');
 const driverAuthRoutes = require('./routes/driverAuth.routes');
 const vehicleTypeRoutes = require('./routes/vehicleType.routes');
 const vehicleRoutes = require('./routes/vehicle.routes');
+const notificationRoutes = require('./routes/notification.routes');
 
 // Initialize Express app
 const app = express();
@@ -163,6 +164,29 @@ app.get('/health/cache', async (req, res) => {
   }
 });
 
+// FCM health check route
+app.get('/health/fcm', async (req, res) => {
+  try {
+    const notificationService = require('./services/notificationService');
+    const status = notificationService.getStatus();
+    
+    res.status(200).json({ 
+      status: status.fcm.available ? 'ok' : 'disabled', 
+      timestamp: new Date().toISOString(),
+      fcm: status.fcm
+    });
+  } catch (error) {
+    res.status(503).json({
+      status: 'error',
+      timestamp: new Date().toISOString(),
+      fcm: {
+        available: false,
+        error: error.message
+      }
+    });
+  }
+});
+
 // JWT Debug endpoint for production testing
 app.get('/debug/jwt', async (req, res) => {
   const { token } = req.query;
@@ -272,6 +296,7 @@ app.use('/api/drivers', driverSignupRoutes);
 app.use('/api/driver-auth', driverAuthRoutes);
 app.use('/api/vehicles', vehicleTypeRoutes);
 app.use('/api/admin/vehicles', vehicleRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Error handling middleware (should be last)
 app.use(errorHandler);
@@ -297,6 +322,15 @@ const startServer = async () => {
       }
     } else {
       logger.info('Cache system disabled by configuration');
+    }
+
+    // Initialize notification service (non-blocking)
+    try {
+      const notificationService = require('./services/notificationService');
+      await notificationService.initialize();
+      logger.info('Notification service initialized');
+    } catch (error) {
+      logger.warn('Notification service failed to initialize, continuing without FCM:', error.message);
     }
     
     // Start the server

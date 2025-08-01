@@ -69,6 +69,9 @@ services:
       - REDIS_PASSWORD=${REDIS_PASSWORD:-}
       - CACHE_ENABLED=true
       - CACHE_TTL_DEFAULT=300
+      - FCM_PROJECT_ID=${FCM_PROJECT_ID:-}
+      - FCM_SERVICE_ACCOUNT_KEY=${FCM_SERVICE_ACCOUNT_KEY:-}
+      - FCM_ENABLED=${FCM_ENABLED:-false}
     ports:
       - "5000:5000"
     volumes:

@@ -9,6 +9,8 @@ const UserPreferences = require('./userPreferences.model');
 const OtpVerification = require('./otpVerification.model');
 const DriverDocument = require('./driverDocument.model')(sequelize);
 const VehicleType = require('./vehicleType.model');
+const DeviceToken = require('./deviceToken.model');
+const Notification = require('./notification.model');
 
 // Define model associations here
 User.hasMany(Shipment, { foreignKey: 'userId', as: 'shipments' });
@@ -40,6 +42,23 @@ Vehicle.belongsTo(Driver, { foreignKey: 'driverId', as: 'driverOwner' });
 Driver.hasMany(DriverDocument, { foreignKey: 'driver_id', as: 'documents' });
 DriverDocument.belongsTo(Driver, { foreignKey: 'driver_id', as: 'driverProfile' });
 
+// DeviceToken associations
+User.hasMany(DeviceToken, { foreignKey: 'userId', as: 'deviceTokens' });
+DeviceToken.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
+Driver.hasMany(DeviceToken, { foreignKey: 'driverId', as: 'deviceTokens' });
+DeviceToken.belongsTo(Driver, { foreignKey: 'driverId', as: 'driver' });
+
+// Notification associations
+User.hasMany(Notification, { foreignKey: 'userId', as: 'notifications' });
+Notification.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
+Driver.hasMany(Notification, { foreignKey: 'driverId', as: 'notifications' });
+Notification.belongsTo(Driver, { foreignKey: 'driverId', as: 'driver' });
+
+Shipment.hasMany(Notification, { foreignKey: 'shipmentId', as: 'notifications' });
+Notification.belongsTo(Shipment, { foreignKey: 'shipmentId', as: 'shipment' });
+
 module.exports = {
   sequelize,
   User,
@@ -51,5 +70,7 @@ module.exports = {
   UserPreferences,
   OtpVerification,
   DriverDocument,
-  VehicleType
+  VehicleType,
+  DeviceToken,
+  Notification
 };

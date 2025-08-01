@@ -95,6 +95,9 @@ jobs:
             --update-secrets REDIS_PORT=REDIS_PORT:latest \
             --update-secrets REDIS_PASSWORD=REDIS_PASSWORD:latest \
             --update-secrets CORS_ORIGIN=CORS_ORIGIN:latest \
+            --update-secrets FCM_PROJECT_ID=FCM_PROJECT_ID:latest \
+            --update-secrets FCM_SERVICE_ACCOUNT_KEY=FCM_SERVICE_ACCOUNT_KEY:latest \
+            --update-secrets FCM_ENABLED=FCM_ENABLED:latest \
             --service-account=86500976134-compute@developer.gserviceaccount.com \
             --timeout 300 \
             --concurrency 80
@@ -118,6 +121,9 @@ jobs:
           
           # Test API endpoint
           curl -f "$SERVICE_URL/api/health" || echo "API health endpoint not available"
+          
+          # Test FCM health endpoint
+          curl -f "$SERVICE_URL/health/fcm" || echo "FCM health endpoint not available"
           
           echo "✅ Smoke tests passed!"
 

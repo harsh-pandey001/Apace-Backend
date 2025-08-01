@@ -3,6 +3,7 @@ const { Op } = require('sequelize');
 const { Shipment, User, Vehicle, Driver, DriverDocument, VehicleType, sequelize } = require('../models');
 const { AppError } = require('../middleware/errorHandler');
 const { logger } = require('../utils/logger');
+const NotificationMiddleware = require('../middleware/notificationMiddleware');
 
 // Helper function for pagination
 const getPagination = (req) => {
@@ -227,6 +228,16 @@ exports.createShipment = async (req, res, next) => {
       debugTimestamp: new Date().toISOString()
     });
 
+    // Send booking confirmation notification (only for authenticated users)
+    if (userType === 'authenticated') {
+      try {
+        await NotificationMiddleware.onShipmentCreated(shipment);
+      } catch (notificationError) {
+        logger.error('Failed to send booking confirmation notification:', notificationError);
+        // Don't fail the request if notification fails
+      }
+    }
+
     // Prepare response data
     const responseData = {
       trackingNumber: shipment.trackingNumber,
@@ -438,10 +449,21 @@ exports.updateShipmentStatus = async (req, res, next) => {
       updateData.actualDeliveryDate = new Date();
     }
 
+    // Store old status for notification
+    const oldStatus = shipment.status;
+
     // Update shipment
     await shipment.update(updateData);
 
     logger.info(`Shipment ${shipment.trackingNumber} status updated to ${status}`);
+
+    // Send status update notifications
+    try {
+      await NotificationMiddleware.onStatusUpdate(shipment, oldStatus, status);
+    } catch (notificationError) {
+      logger.error('Failed to send status update notification:', notificationError);
+      // Don't fail the request if notification fails
+    }
 
     res.status(200).json({
       status: 'success',
@@ -858,6 +880,14 @@ exports.assignShipment = async (req, res, next) => {
     }
     
     logger.info(`Admin assigned shipment ${shipment.trackingNumber} to driver ${driver.name} (${driver.vehicleNumber})`);
+
+    // Send driver assignment notifications
+    try {
+      await NotificationMiddleware.onDriverAssigned(shipment, driver.id);
+    } catch (notificationError) {
+      logger.error('Failed to send driver assignment notification:', notificationError);
+      // Don't fail the request if notification fails
+    }
 
     // Get updated shipment with driver and vehicle info
     const updatedShipment = await Shipment.findByPk(req.params.id, {
