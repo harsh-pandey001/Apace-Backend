@@ -1,6 +1,23 @@
 const { validationResult } = require('express-validator');
-const notificationService = require('../services/notificationService');
-const fcmService = require('../services/fcmService');
+
+// Add error handling for service imports
+let notificationService, fcmService;
+try {
+  notificationService = require('../services/notificationService');
+  console.log('✓ notificationService loaded in controller');
+} catch (e) {
+  console.error('❌ Failed to load notificationService:', e.message);
+  throw e;
+}
+
+try {
+  fcmService = require('../services/fcmService');
+  console.log('✓ fcmService loaded in controller');
+} catch (e) {
+  console.error('❌ Failed to load fcmService:', e.message);
+  throw e;
+}
+
 const { DeviceToken, Notification } = require('../models');
 const logger = require('../utils/logger');
 
