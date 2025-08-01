@@ -504,4 +504,13 @@ class NotificationController {
   }
 }
 
-module.exports = new NotificationController();
+// Export class instance with error handling
+try {
+  const instance = new NotificationController();
+  console.log('✓ NotificationController instance created successfully');
+  module.exports = instance;
+} catch (error) {
+  console.error('❌ Failed to create NotificationController instance:', error.message);
+  // Export empty object to prevent module loading errors
+  module.exports = {};
+}
