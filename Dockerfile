@@ -19,8 +19,7 @@ COPY . .
 # Create uploads directory
 RUN mkdir -p uploads
 
-# Add startup test
-COPY test-startup.js ./
+# Run startup test (file already copied with COPY . .)
 RUN node test-startup.js
 
 # Expose port
