@@ -315,12 +315,10 @@ const startServer = async () => {
   try {
     // Initialize Redis connection (non-blocking)
     if (process.env.CACHE_ENABLED !== 'false') {
-      try {
-        await redisConfig.connect();
-        logger.info('Cache system initialized');
-      } catch (error) {
-        logger.warn('Cache system failed to initialize, continuing without cache:', error.message);
-      }
+      // Start Redis connection in background (don't await)
+      redisConfig.connect()
+        .then(() => logger.info('Cache system initialized'))
+        .catch(error => logger.warn('Cache system failed to initialize, continuing without cache:', error.message));
     } else {
       logger.info('Cache system disabled by configuration');
     }

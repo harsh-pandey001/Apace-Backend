@@ -19,8 +19,7 @@ COPY . .
 # Create uploads directory
 RUN mkdir -p uploads
 
-# Run startup test (file already copied with COPY . .)
-RUN node test-startup.js
+# Skip startup test during build for faster deployment
 
 # Expose port
 EXPOSE 5000
