@@ -16,7 +16,7 @@ steps:
       - '--file=AdminPanel/Dockerfile'
       - '--tag=gcr.io/$PROJECT_ID/apace-admin:$BUILD_ID'
       - '--tag=gcr.io/$PROJECT_ID/apace-admin:latest'
-      - '--build-arg=REACT_APP_API_BASE_URL=https://apace-backend-l5ucytvnga-uc.a.run.app/api'
+      - '--build-arg=REACT_APP_API_BASE_URL=https://apace-backend-working-86500976134.us-central1.run.app/api'
       - './AdminPanel'
 
   # Push the image to Container Registry
