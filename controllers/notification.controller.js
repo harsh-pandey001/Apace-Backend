@@ -132,7 +132,7 @@ class NotificationController {
         });
       }
 
-      const { userIds = [], driverIds = [], type, title, body, data = {}, priority = 'normal' } = req.body;
+      const { userIds = [], driverIds = [], type, title, body, data = {} /* , priority = 'normal' */ } = req.body;
 
       if (userIds.length === 0 && driverIds.length === 0) {
         return res.status(400).json({

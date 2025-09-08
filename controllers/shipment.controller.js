@@ -924,7 +924,7 @@ exports.assignShipment = async (req, res, next) => {
     });
   } catch (error) {
     // 🔍 DEEP INSPECTION: Comprehensive error logging as requested
-    logger.error("🔍 ASSIGN SHIPMENT DEBUG - Assign shipment failed:", {
+    logger.error('🔍 ASSIGN SHIPMENT DEBUG - Assign shipment failed:', {
       message: error.message,
       stack: error.stack,
       name: error.name,
@@ -947,13 +947,13 @@ exports.assignShipment = async (req, res, next) => {
     // Return detailed error for debugging (only in development, generic in production)
     if (process.env.NODE_ENV === 'development') {
       return res.status(500).json({ 
-        message: "Internal Server Error", 
+        message: 'Internal Server Error', 
         details: error.message,
         stack: error.stack
       });
     } else {
       return res.status(500).json({ 
-        message: "Internal Server Error", 
+        message: 'Internal Server Error', 
         details: error.message 
       });
     }

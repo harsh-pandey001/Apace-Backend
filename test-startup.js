@@ -14,7 +14,7 @@ try {
   
   console.log('2. Testing database config...');
   try {
-    const { sequelize } = require('./config/database');
+    const { sequelize: _sequelize } = require('./config/database');
     console.log('✓ database config loaded');
   } catch (dbError) {
     console.log('⚠️  Database config error (expected in build):', dbError.message);
@@ -41,7 +41,7 @@ try {
   }
   
   console.log('5. Creating express app...');
-  const app = express();
+  const _app = express();
   console.log('✓ app created');
   
   const PORT = process.env.PORT || 5000;
@@ -57,6 +57,8 @@ try {
   try {
     const fs = require('fs');
     console.error(fs.readdirSync('.').slice(0, 20));
-  } catch (e) {}
+  } catch (e) {
+    // Ignore errors in directory listing
+  }
   process.exit(1);
 }

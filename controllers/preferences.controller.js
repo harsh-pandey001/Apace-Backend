@@ -1,6 +1,6 @@
 const { validationResult } = require('express-validator');
 const { UserPreferences } = require('../models');
-const { AppError } = require('../middleware/errorHandler');
+// const { AppError } = require('../middleware/errorHandler'); // Unused
 const { logger } = require('../utils/logger');
 
 // Get user preferences

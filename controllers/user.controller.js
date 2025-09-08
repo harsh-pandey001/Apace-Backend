@@ -207,6 +207,8 @@ exports.getUser = async (req, res, next) => {
         
         // Create clean user object without the documents association
         const { documents, ...cleanDriverData } = driverData;
+        // eslint-disable-next-line no-unused-vars
+        const _documents = documents; // Keep reference but mark as intentionally unused
         
         user = {
           ...cleanDriverData,

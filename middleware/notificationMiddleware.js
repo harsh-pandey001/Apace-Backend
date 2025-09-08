@@ -1,5 +1,5 @@
 const notificationService = require('../services/notificationService');
-const { User, Driver, Vehicle } = require('../models');
+const { /* User, */ Driver, Vehicle } = require('../models');
 const logger = require('../utils/logger');
 
 class NotificationMiddleware {
@@ -120,39 +120,39 @@ class NotificationMiddleware {
         let templateData;
         
         switch (notificationType) {
-          case 'pickup_completed':
-            templateData = {
-              shipmentId: shipment.id,
-              deliveryAddress: shipment.deliveryAddress,
-              estimatedDeliveryTime: shipment.estimatedDeliveryTime
-            };
-            break;
+        case 'pickup_completed':
+          templateData = {
+            shipmentId: shipment.id,
+            deliveryAddress: shipment.deliveryAddress,
+            estimatedDeliveryTime: shipment.estimatedDeliveryTime
+          };
+          break;
             
-          case 'out_for_delivery':
-            templateData = {
-              shipmentId: shipment.id,
-              eta: 30, // Default ETA in minutes
-              deliveryAddress: shipment.deliveryAddress,
-              driverPhone: shipment.driverPhone
-            };
-            break;
+        case 'out_for_delivery':
+          templateData = {
+            shipmentId: shipment.id,
+            eta: 30, // Default ETA in minutes
+            deliveryAddress: shipment.deliveryAddress,
+            driverPhone: shipment.driverPhone
+          };
+          break;
             
-          case 'delivered':
-            templateData = {
-              shipmentId: shipment.id,
-              deliveryAddress: shipment.deliveryAddress
-            };
-            break;
+        case 'delivered':
+          templateData = {
+            shipmentId: shipment.id,
+            deliveryAddress: shipment.deliveryAddress
+          };
+          break;
             
-          case 'cancelled':
-            templateData = {
-              shipmentId: shipment.id,
-              reason: shipment.cancellationReason || 'Please contact customer support for details.'
-            };
-            break;
+        case 'cancelled':
+          templateData = {
+            shipmentId: shipment.id,
+            reason: shipment.cancellationReason || 'Please contact customer support for details.'
+          };
+          break;
             
-          default:
-            templateData = { shipmentId: shipment.id };
+        default:
+          templateData = { shipmentId: shipment.id };
         }
 
         await notificationService.sendToUser(

@@ -1,10 +1,11 @@
 const jwt = require('jsonwebtoken');
 
-/**
- * Normalize expiration time to proper JWT format
+/*
+ * Normalize expiration time to proper JWT format - UNUSED
  * @param {string} expiry - Expiration time (could be seconds or JWT format)
  * @returns {string|number} Normalized expiration
  */
+/*
 const normalizeExpiry = (expiry) => {
   // If it's already a JWT format (contains letters), return as-is
   if (/[a-zA-Z]/.test(expiry)) {
@@ -30,6 +31,7 @@ const normalizeExpiry = (expiry) => {
   // Fallback to default
   return '1h';
 };
+*/
 
 /**
  * Generate a JWT token for a user

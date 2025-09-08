@@ -13,7 +13,7 @@ class AppError extends Error {
 }
 
 // Global error handling middleware
-const errorHandler = (err, req, res, next) => {
+const errorHandler = (err, req, res, _next) => {
   err.statusCode = err.statusCode || 500;
   err.status = err.status || 'error';
 
@@ -97,7 +97,7 @@ const handleSequelizeValidationError = (err) => {
 };
 
 // Handle Sequelize unique constraint errors
-const handleSequelizeUniqueConstraintError = (err) => {
+const handleSequelizeUniqueConstraintError = (_err) => {
   const message = 'Duplicate field value: please use another value';
   return new AppError(message, 400);
 };

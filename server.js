@@ -9,7 +9,7 @@ const rateLimit = require('express-rate-limit');
 const jwt = require('jsonwebtoken');
 const { errorHandler } = require('./middleware/errorHandler');
 const { setupLogger } = require('./utils/logger');
-const { connectDB, ensureDBConnection, getDBStatus } = require('./config/database');
+const { /* connectDB, */ ensureDBConnection, getDBStatus } = require('./config/database');
 const redisConfig = require('./config/redis');
 
 // Initialize logger

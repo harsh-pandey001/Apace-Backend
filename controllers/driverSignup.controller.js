@@ -1,12 +1,12 @@
 const { validationResult } = require('express-validator');
 const { Op } = require('sequelize');
-const { Driver, OtpVerification, VehicleType, DriverDocument, sequelize } = require('../models');
+const { Driver, /* OtpVerification, */ VehicleType, DriverDocument, sequelize } = require('../models');
 const { AppError } = require('../middleware/errorHandler');
 const { logger } = require('../utils/logger');
 const { 
-  createOrUpdateOTP, 
-  verifyOTP, 
-  sendOTPviaSMS 
+  /* createOrUpdateOTP, */
+  verifyOTP 
+  /* sendOTPviaSMS */
 } = require('../utils/otpUtils');
 
 // Helper function to find driver by phone
@@ -335,7 +335,7 @@ exports.updateDriverProfile = async (req, res, next) => {
     
     // Only include fields that are present in the request body
     allowedFields.forEach(field => {
-      if (req.body.hasOwnProperty(field)) {
+      if (Object.prototype.hasOwnProperty.call(req.body, field)) {
         updateData[field] = req.body[field];
       }
     });
@@ -640,7 +640,7 @@ exports.deleteDriver = async (req, res, next) => {
         const shipmentIds = activeShipments.map(s => s.trackingNumber).join(', ');
         return next(new AppError(
           `Cannot delete driver. Driver has ${activeShipments.length} active shipment(s): ${shipmentIds}. ` +
-          `Please wait for shipments to complete or reassign them before deleting the driver.`, 
+          'Please wait for shipments to complete or reassign them before deleting the driver.', 
           409
         ));
       }

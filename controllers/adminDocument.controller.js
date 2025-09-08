@@ -1,7 +1,7 @@
-const { DriverDocument, User, Driver } = require('../models');
+const { DriverDocument, /* User, */ Driver } = require('../models');
 const { Op } = require('sequelize');
 const fs = require('fs');
-const path = require('path');
+// const path = require('path'); // Unused
 
 const adminDocumentController = {
   // Get all documents for admin review (show all by default)

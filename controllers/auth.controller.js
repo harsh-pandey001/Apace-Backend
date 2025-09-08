@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
-const { User, Driver, Admin, OtpVerification } = require('../models');
+const { User, Driver, Admin, /* OtpVerification */ } = require('../models');
 const { AppError } = require('../middleware/errorHandler');
 const { logger } = require('../utils/logger');
 const { 

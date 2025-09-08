@@ -183,7 +183,7 @@ class NotificationService {
   /**
    * Send email notification (placeholder for future implementation)
    */
-  async sendEmailNotification(userId, driverId, content, options = {}) {
+  async sendEmailNotification(userId, driverId, content, _options = {}) {
     // TODO: Implement email service integration (SendGrid, NodeMailer, etc.)
     logger.info('Email notification requested but not implemented yet');
     return { success: false, error: 'Email service not implemented' };
@@ -192,7 +192,7 @@ class NotificationService {
   /**
    * Send SMS notification (placeholder for future implementation)
    */
-  async sendSMSNotification(userId, driverId, content, options = {}) {
+  async sendSMSNotification(userId, driverId, content, _options = {}) {
     // TODO: Implement SMS service integration (Twilio, etc.)
     logger.info('SMS notification requested but not implemented yet');
     return { success: false, error: 'SMS service not implemented' };
