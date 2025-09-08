@@ -23,7 +23,7 @@ router.get('/admin/all', resourceCacheMiddleware('admin-vehicles', 'admin', 300)
 // Admin only routes - require admin role
 router.use(restrictTo('admin'));
 
-// CRUD operations for vehicle types (admin only) - with cache invalidation
+
 router.post('/', 
   createVehicleTypeValidation, 
   clearCacheMiddleware({
