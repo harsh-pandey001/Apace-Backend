@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Get API base URL from environment variables
-const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || 'https://apace-backend-l5ucytvnga-uc.a.run.app/api';
+const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || 'https://apace-backend-working-86500976134.us-central1.run.app/api';
 
 // Debug logging (only in development)
 if (process.env.NODE_ENV === 'development') {

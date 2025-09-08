@@ -48,7 +48,7 @@ const DocumentPreviewModal = ({
     if (!documentPath) return null;
     // Remove the full path and create a proper API URL
     const filename = documentPath.split('/').pop();
-    return `${process.env.REACT_APP_API_BASE_URL || 'https://apace-backend-86500976134.us-central1.run.app'}/uploads/documents/${filename}`;
+    return `${process.env.REACT_APP_API_BASE_URL || 'https://apace-backend-working-86500976134.us-central1.run.app'}/uploads/documents/${filename}`;
   };
 
   const handleDownload = () => {
