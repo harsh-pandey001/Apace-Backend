@@ -81,7 +81,7 @@ router.post('/admin/documents/:driverId/verify',
   validate,
   clearDriverCacheMiddleware({ 
     dataTypes: ['documents'],
-    customInvalidation: async (req, res, adminId) => {
+    customInvalidation: async (req, _res, _adminId) => {
       // Invalidate the specific driver's documents cache
       const driverId = req.params.driverId;
       const driverCacheManager = require('../utils/driverCache');
@@ -97,7 +97,7 @@ router.post('/admin/documents/:driverId/reject',
   validate,
   clearDriverCacheMiddleware({ 
     dataTypes: ['documents'],
-    customInvalidation: async (req, res, adminId) => {
+    customInvalidation: async (req, _res, _adminId) => {
       // Invalidate the specific driver's documents cache
       const driverId = req.params.driverId;
       const driverCacheManager = require('../utils/driverCache');

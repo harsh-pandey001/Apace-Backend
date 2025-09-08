@@ -229,7 +229,7 @@ module.exports = {
     });
   },
 
-  async down(queryInterface, Sequelize) {
+  async down(queryInterface, _Sequelize) {
     // Drop indexes first
     await queryInterface.removeIndex('notifications', 'notifications_sent_at_idx');
     await queryInterface.removeIndex('notifications', 'notifications_created_at_idx');

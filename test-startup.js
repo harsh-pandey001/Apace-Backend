@@ -14,7 +14,7 @@ try {
   
   console.log('2. Testing database config...');
   try {
-    const { sequelize: _sequelize } = require('./config/database');
+    require('./config/database'); // Just test loading
     console.log('✓ database config loaded');
   } catch (dbError) {
     console.log('⚠️  Database config error (expected in build):', dbError.message);
@@ -41,7 +41,7 @@ try {
   }
   
   console.log('5. Creating express app...');
-  const _app = express();
+  express(); // Just test loading
   console.log('✓ app created');
   
   const PORT = process.env.PORT || 5000;

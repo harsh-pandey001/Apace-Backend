@@ -3,7 +3,7 @@ const { v4: uuidv4 } = require('uuid');
 
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
-  async up(queryInterface, Sequelize) {
+  async up(queryInterface, _Sequelize) {
     // Insert admin into the new admins table
     await queryInterface.bulkInsert('admins', [{
       id: uuidv4(),
@@ -19,7 +19,7 @@ module.exports = {
     }], {});
   },
 
-  async down(queryInterface, Sequelize) {
+  async down(queryInterface, _Sequelize) {
     await queryInterface.bulkDelete('admins', { email: 'admin@apace.com' }, {});
   }
 };
