@@ -11,7 +11,7 @@ module.exports = {
         allowNull: false
       },
       userId: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.UUID,
         allowNull: true,
         references: {
           model: 'users',
@@ -21,7 +21,7 @@ module.exports = {
         onDelete: 'CASCADE'
       },
       driverId: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.UUID,
         allowNull: true,
         references: {
           model: 'drivers',
@@ -31,7 +31,7 @@ module.exports = {
         onDelete: 'CASCADE'
       },
       token: {
-        type: Sequelize.TEXT,
+        type: Sequelize.STRING(500),
         allowNull: false,
         unique: true
       },
@@ -75,7 +75,7 @@ module.exports = {
         allowNull: false
       },
       userId: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.UUID,
         allowNull: true,
         references: {
           model: 'users',
@@ -85,7 +85,7 @@ module.exports = {
         onDelete: 'CASCADE'
       },
       driverId: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.UUID,
         allowNull: true,
         references: {
           model: 'drivers',
@@ -95,7 +95,7 @@ module.exports = {
         onDelete: 'CASCADE'
       },
       shipmentId: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.UUID,
         allowNull: true,
         references: {
           model: 'shipments',

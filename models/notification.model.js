@@ -8,7 +8,7 @@ const Notification = sequelize.define('Notification', {
     autoIncrement: true
   },
   userId: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.UUID,
     allowNull: true,
     references: {
       model: 'users',
@@ -18,7 +18,7 @@ const Notification = sequelize.define('Notification', {
     onDelete: 'CASCADE'
   },
   driverId: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.UUID,
     allowNull: true,
     references: {
       model: 'drivers',
@@ -28,7 +28,7 @@ const Notification = sequelize.define('Notification', {
     onDelete: 'CASCADE'
   },
   shipmentId: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.UUID,
     allowNull: true,
     references: {
       model: 'shipments',

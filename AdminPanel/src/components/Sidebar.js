@@ -145,10 +145,11 @@ function Sidebar({ drawerWidth, mobileOpen, onDrawerToggle, onRouteChange }) {
             fontWeight: 'bold'
           }}
         >
-          A
+          H
         </Avatar>
         <Typography variant="h6" noWrap component="div" sx={{ fontWeight: 'bold' }}>
-          APACE Admin
+          <Box component="span" sx={{ fontWeight: 300, opacity: 0.8 }}>Him</Box>
+          <Box component="span" sx={{ fontWeight: 700 }}>Dispatch</Box>
         </Typography>
       </Toolbar>
       

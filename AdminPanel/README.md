@@ -1,6 +1,6 @@
-# APACE Admin Panel
+# HimDispatch Admin Panel
 
-A modern, responsive admin dashboard built with React.js and Material-UI for the APACE Transportation System.
+A modern, responsive admin dashboard built with React.js and Material-UI for the HimDispatch Transportation System.
 
 ## Features
 
@@ -51,7 +51,7 @@ AdminPanel/
    ```
    Edit `.env` to set your backend URL:
    ```
-   REACT_APP_API_BASE_URL=https://apace-backend-86500976134.us-central1.run.app
+   REACT_APP_API_BASE_URL=https://himdispatch-backend-86500976134.us-central1.run.app
    ```
 
 4. Start the development server:
@@ -68,12 +68,12 @@ AdminPanel/
 The admin panel uses the following environment variables:
 
 - `REACT_APP_API_BASE_URL`: Base URL for the backend API (required)
-  - **Production**: `https://apace-backend-86500976134.us-central1.run.app`
+  - **Production**: `https://himdispatch-backend-86500976134.us-central1.run.app`
   - **Development**: `http://localhost:5000`
 
 ### Backend Configuration
 
-The admin panel connects to the APACE Transportation Backend API. Make sure the backend is running and accessible at the configured URL.
+The admin panel connects to the HimDispatch Transportation Backend API. Make sure the backend is running and accessible at the configured URL.
 
 ## Technologies Used
 
@@ -173,4 +173,4 @@ This creates an optimized production build in the `build/` directory.
 
 ## License
 
-This project is part of the APACE Transportation Backend system.
+This project is part of the HimDispatch Transportation Backend system.

@@ -120,7 +120,8 @@ const Login = () => {
           }}
         >
           <Typography variant="h4" color="inherit" sx={{ mb: 2 }}>
-            APACE
+            <Box component="span" sx={{ fontWeight: 300, opacity: 0.8 }}>Him</Box>
+            <Box component="span" sx={{ fontWeight: 700, fontSize: '1.1em' }}>Dispatch</Box>
           </Typography>
           <Typography variant="h5" component="h1" gutterBottom textAlign="center">
             Admin Panel Login

@@ -8,7 +8,7 @@ const DeviceToken = sequelize.define('DeviceToken', {
     autoIncrement: true
   },
   userId: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.UUID,
     allowNull: true,
     references: {
       model: 'users',
@@ -18,7 +18,7 @@ const DeviceToken = sequelize.define('DeviceToken', {
     onDelete: 'CASCADE'
   },
   driverId: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.UUID,
     allowNull: true,
     references: {
       model: 'drivers',
@@ -28,7 +28,7 @@ const DeviceToken = sequelize.define('DeviceToken', {
     onDelete: 'CASCADE'
   },
   token: {
-    type: DataTypes.TEXT,
+    type: DataTypes.STRING(500),
     allowNull: false,
     unique: true
   },

@@ -74,18 +74,10 @@ const {
 } = validations;
 
 // Middleware to check if user is authenticated
-const requireAuth = authMiddleware.authenticateToken;
+const requireAuth = authMiddleware.protect;
 
 // Middleware to check if user is admin (for sending notifications)
-const requireAdmin = (req, res, next) => {
-  if (!req.user || !req.user.isAdmin) {
-    return res.status(403).json({
-      success: false,
-      message: 'Admin access required'
-    });
-  }
-  next();
-};
+const requireAdmin = authMiddleware.restrictTo('admin');
 
 /**
  * @route   POST /api/notifications/register-token
