@@ -62,7 +62,8 @@
       "Bash(./complete-setup.sh:*)",
       "Bash(./quick-fix-server.sh:*)",
       "Bash(./start-docker-mysql.sh:*)",
-      "Bash(PORT=5001 npm run dev)"
+      "Bash(PORT=5001 npm run dev)",
+      "Bash(PORT=5000 npm run dev)"
     ],
     "deny": []
   },

@@ -44,7 +44,7 @@ jobs:
           cd AdminPanel
           npm run build
         env:
-          REACT_APP_API_BASE_URL: https://apace-backend-l5ucytvnga-uc.a.run.app/api
+          REACT_APP_API_BASE_URL: https://apace-backend-working-86500976134.us-central1.run.app/api
           NODE_ENV: production
 
       - name: Authenticate to Google Cloud
@@ -65,7 +65,7 @@ jobs:
         run: |
           # Build the Docker image
           docker build \
-            --build-arg REACT_APP_API_BASE_URL=https://apace-backend-l5ucytvnga-uc.a.run.app/api \
+            --build-arg REACT_APP_API_BASE_URL=https://apace-backend-working-86500976134.us-central1.run.app/api \
             --tag gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
             --tag gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest \
             ./AdminPanel

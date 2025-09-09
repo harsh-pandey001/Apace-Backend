@@ -13,9 +13,19 @@ if (process.env.NODE_ENV === 'development') {
 // Create axios instance with base URL and default configs
 const api = axios.create({
   baseURL: apiBaseUrl,
-  timeout: 10000,
+  timeout: 30000, // Increased timeout for slower connections
   headers: {
     'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'X-Requested-With': 'XMLHttpRequest', // Helps identify AJAX requests
+  },
+  // Enable credentials for production CORS
+  withCredentials: process.env.NODE_ENV === 'production' ? true : false,
+  
+  // Additional axios configuration for better reliability
+  validateStatus: function (status) {
+    // Resolve promise for status codes less than 500
+    return status < 500;
   }
 });
 
@@ -56,6 +66,20 @@ api.interceptors.response.use(
     if (process.env.NODE_ENV === 'development') {
       console.error('API response error:', error.response?.status, error.config?.url);
       console.error('Error details:', error.message);
+      
+      // Log CORS-specific errors
+      if (error.message.includes('CORS') || error.message.includes('Access-Control')) {
+        console.error('CORS Error detected:', error.message);
+        console.error('Request URL:', error.config?.url);
+        console.error('Base URL:', error.config?.baseURL);
+        console.error('Full URL:', `${error.config?.baseURL}${error.config?.url}`);
+      }
+      
+      // Log network errors
+      if (error.code === 'NETWORK_ERROR' || !error.response) {
+        console.error('Network error - possible CORS or connectivity issue');
+        console.error('Check if backend is running at:', apiBaseUrl);
+      }
     }
     
     // Handle authentication errors
@@ -65,6 +89,33 @@ api.interceptors.response.use(
       localStorage.removeItem('refresh_token');
       window.location.href = '/login';
     }
+    
+    // Handle CORS or network errors gracefully
+    if (!error.response && (error.message.includes('CORS') || error.code === 'NETWORK_ERROR')) {
+      const corsError = new Error(
+        process.env.NODE_ENV === 'production' 
+          ? 'Unable to connect to the server. Please check your internet connection and try again.'
+          : 'Unable to connect to the server. This might be a CORS or network issue.'
+      );
+      corsError.isNetworkError = true;
+      corsError.originalError = error;
+      
+      // In production, log the error details for debugging
+      if (process.env.NODE_ENV === 'production') {
+        console.error('Production API Error:', {
+          message: error.message,
+          code: error.code,
+          config: {
+            url: error.config?.url,
+            method: error.config?.method,
+            baseURL: error.config?.baseURL
+          }
+        });
+      }
+      
+      return Promise.reject(corsError);
+    }
+    
     return Promise.reject(error);
   }
 );

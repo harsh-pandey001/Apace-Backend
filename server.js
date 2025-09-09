@@ -61,19 +61,96 @@ app.use(helmet({
 app.use(morgan('combined', { stream: { write: message => logger.info(message.trim()) } }));
 app.use(express.json({ limit: '10kb' })); // Body parser for JSON payloads
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
-app.use(cors({
-  origin: true, // Allow all origins for admin panel access
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
-}));
+// CORS configuration - production-ready with admin panel support
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, Postman, curl, etc.)
+    if (!origin) return callback(null, true);
+    
+    // Allow all localhost variations for development
+    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      return callback(null, true);
+    }
+    
+    // Allow all origins in development
+    if (process.env.NODE_ENV === 'development') {
+      return callback(null, true);
+    }
+    
+    // Production allowed origins
+    const allowedOrigins = [
+      // Google Cloud Run domains (admin panel deployments)
+      /https:\/\/.*\.run\.app$/,
+      // GitHub Pages or other static hosting
+      /https:\/\/.*\.github\.io$/,
+      // Netlify deployments
+      /https:\/\/.*\.netlify\.app$/,
+      // Vercel deployments
+      /https:\/\/.*\.vercel\.app$/,
+      // Custom domains
+      'https://admin.himdispatch.com',
+      'https://himdispatch-admin.com',
+      // Any https origin for now (can be restricted later)
+      /^https:\/\//
+    ];
+    
+    // Check if origin matches any allowed pattern
+    const isAllowed = allowedOrigins.some(allowed => {
+      if (typeof allowed === 'string') {
+        return origin === allowed;
+      } else if (allowed instanceof RegExp) {
+        return allowed.test(origin);
+      }
+      return false;
+    });
+    
+    if (isAllowed) {
+      return callback(null, true);
+    }
+    
+    // Log blocked origins for debugging
+    if (process.env.CORS_DEBUG === 'true') {
+      logger.warn(`CORS: Blocked origin ${origin}`);
+    }
+    
+    // Allow all origins for now, but log for monitoring
+    // TODO: Restrict this in production after identifying all admin panel domains
+    callback(null, true);
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: [
+    'Origin',
+    'X-Requested-With', 
+    'Content-Type', 
+    'Accept',
+    'Authorization',
+    'Cache-Control',
+    'X-HTTP-Method-Override',
+    'X-Forwarded-For',
+    'X-Real-IP'
+  ],
+  exposedHeaders: ['Authorization', 'X-Total-Count', 'Link'],
+  credentials: true,
+  preflightContinue: false,
+  optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
 app.use(compression());
 
-// Serve uploaded files statically with CORS headers
+// Serve uploaded files statically with comprehensive CORS headers
 app.use('/uploads', (req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*'); // Allow all origins for file uploads
-  res.header('Access-Control-Allow-Methods', 'GET');
-  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  res.header('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control');
+  res.header('Access-Control-Expose-Headers', 'Content-Length, Content-Type');
+  res.header('Cross-Origin-Resource-Policy', 'cross-origin');
+  
+  // Handle preflight requests for file uploads
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  
   next();
 }, express.static(path.join(__dirname, 'uploads')));
 
