@@ -54,6 +54,7 @@ verify-currency-changes.js
 **/PIE_CHART_OPTIMIZATION.md
 **/FILTER_TEST.md
 **/CLIENT_SIDE_FILTERING.md
+GCP-DEPLOYMENT.md
 
 # Misc
 .npm
