@@ -82,22 +82,20 @@ jobs:
             --set-env-vars NODE_ENV=development \
             --set-env-vars CACHE_ENABLED=true \
             --set-env-vars CACHE_TTL_DEFAULT=300 \
-            --update-secrets DATABASE_HOST=DATABASE_HOST:latest \
-            --update-secrets DATABASE_PORT=DATABASE_PORT:latest \
-            --update-secrets DATABASE_USER=DATABASE_USER:latest \
-            --update-secrets DATABASE_PASSWORD=DATABASE_PASSWORD:latest \
-            --update-secrets DATABASE_NAME=DATABASE_NAME:latest \
-            --update-secrets JWT_SECRET=JWT_SECRET:latest \
-            --update-secrets JWT_REFRESH_SECRET=JWT_REFRESH_SECRET:latest \
-            --update-secrets JWT_EXPIRES_IN=JWT_EXPIRES_IN:latest \
-            --update-secrets REFRESH_TOKEN_EXPIRES_IN=REFRESH_TOKEN_EXPIRES_IN:latest \
-            --update-secrets REDIS_HOST=REDIS_HOST:latest \
-            --update-secrets REDIS_PORT=REDIS_PORT:latest \
-            --update-secrets REDIS_PASSWORD=REDIS_PASSWORD:latest \
-            --update-secrets CORS_ORIGIN=CORS_ORIGIN:latest \
-            --update-secrets FCM_PROJECT_ID=FCM_PROJECT_ID:latest \
-            --update-secrets FCM_SERVICE_ACCOUNT_KEY=FCM_SERVICE_ACCOUNT_KEY:latest \
-            --update-secrets FCM_ENABLED=FCM_ENABLED:latest \
+            --set-env-vars DATABASE_HOST=34.173.53.157 \
+            --set-env-vars DATABASE_PORT=3306 \
+            --set-env-vars DATABASE_USER=test_user \
+            --set-env-vars DATABASE_PASSWORD=test123 \
+            --set-env-vars DATABASE_NAME=apace_test \
+            --set-env-vars JWT_SECRET=your-secret-key \
+            --set-env-vars JWT_REFRESH_SECRET=your-refresh-secret \
+            --set-env-vars JWT_EXPIRES_IN=24h \
+            --set-env-vars REFRESH_TOKEN_EXPIRES_IN=7d \
+            --set-env-vars REDIS_HOST=34.172.121.211 \
+            --set-env-vars REDIS_PORT=6379 \
+            --set-env-vars REDIS_PASSWORD=ApaceRedis2025 \
+            --set-env-vars CORS_ORIGIN=https://apace-admin-86500976134.us-central1.run.app \
+            --set-env-vars FCM_ENABLED=true \
             --service-account=86500976134-compute@developer.gserviceaccount.com \
             --timeout 300 \
             --concurrency 80
