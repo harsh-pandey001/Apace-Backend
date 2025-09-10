@@ -35,7 +35,7 @@ steps:
     args:
       - 'run'
       - 'deploy'
-      - 'apace-backend-working'
+      - 'apace-backend-dev'
       - '--image=gcr.io/$PROJECT_ID/apace-backend:$BUILD_ID'
       - '--region=us-central1'
       - '--platform=managed'
@@ -45,7 +45,7 @@ steps:
       - '--cpu=1000m'
       - '--min-instances=0'
       - '--max-instances=10'
-      - '--set-env-vars=NODE_ENV=production'
+      - '--set-env-vars=NODE_ENV=development'
       - '--set-env-vars=DATABASE_HOST=34.173.53.157'
       - '--set-env-vars=DATABASE_PORT=3306'
       - '--set-env-vars=DATABASE_USER=test_user'
