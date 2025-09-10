@@ -94,7 +94,7 @@ jobs:
             --set-env-vars REDIS_HOST=34.172.121.211 \
             --set-env-vars REDIS_PORT=6379 \
             --set-env-vars REDIS_PASSWORD=ApaceRedis2025 \
-            --set-env-vars CORS_ORIGIN=https://apace-admin-86500976134.us-central1.run.app \
+            --set-env-vars CORS_ORIGIN=https://apace-admin-l5ucytvnga-uc.a.run.app \
             --set-env-vars FCM_ENABLED=true \
             --service-account=86500976134-compute@developer.gserviceaccount.com \
             --timeout 300 \
