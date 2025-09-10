@@ -12,7 +12,7 @@ on:
 
 env:
   PROJECT_ID: bright-meridian-465411-e2
-  SERVICE_NAME: apace-backend
+  SERVICE_NAME: apace-backend-dev
   REGION: us-central1
 
 jobs:
@@ -79,7 +79,7 @@ jobs:
             --cpu 1000m \
             --min-instances 0 \
             --max-instances 10 \
-            --set-env-vars NODE_ENV=production \
+            --set-env-vars NODE_ENV=development \
             --set-env-vars CACHE_ENABLED=true \
             --set-env-vars CACHE_TTL_DEFAULT=300 \
             --update-secrets DATABASE_HOST=DATABASE_HOST:latest \
