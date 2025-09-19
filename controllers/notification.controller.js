@@ -19,7 +19,7 @@ try {
 }
 
 const { DeviceToken, Notification } = require('../models');
-const logger = require('../utils/logger');
+const { logger } = require('../utils/logger');
 
 class NotificationController {
   /**
@@ -37,18 +37,29 @@ class NotificationController {
       }
 
       const { token, platform = 'android', deviceInfo = {} } = req.body;
-      const { userId, driverId } = req.user; // From auth middleware
+      const { id: userId, role } = req.user; // From auth middleware
 
-      // Determine if this is a user or driver request
-      const targetUserId = userId || null;
-      const targetDriverId = driverId || null;
+      // Determine if this is a user or driver request based on role
+      const targetUserId = (role === 'user' || role === 'admin') ? userId : null;
+      const targetDriverId = role === 'driver' ? userId : null;
 
       if (!targetUserId && !targetDriverId) {
         return res.status(401).json({
           success: false,
-          message: 'Authentication required'
+          message: 'Authentication required - invalid role'
         });
       }
+
+      // Debug logging
+      logger.info(`📱 JWT User data:`, req.user);
+      logger.info(`📱 Registering token for user: ${targetUserId}, driver: ${targetDriverId}, role: ${role}`);
+      logger.info(`📱 About to call registerDeviceToken with:`, {
+        targetUserId,
+        targetDriverId,
+        token: token?.substring(0, 20) + '...',
+        platform,
+        deviceInfo
+      });
 
       const deviceToken = await notificationService.registerDeviceToken(
         targetUserId,
@@ -203,7 +214,11 @@ class NotificationController {
       }
 
       const { limit = 50, offset = 0, status, type } = req.query;
-      const { userId, driverId } = req.user;
+      const { id, role } = req.user;
+      
+      // Map user data based on role like in registerToken
+      const userId = (role === 'user' || role === 'admin') ? id : null;
+      const driverId = role === 'driver' ? id : null;
 
       let result;
       if (userId) {
@@ -261,7 +276,11 @@ class NotificationController {
       }
 
       const { id } = req.params;
-      const { userId, driverId } = req.user;
+      const { id: userIdFromToken, role } = req.user;
+      
+      // Map user data based on role
+      const userId = (role === 'user' || role === 'admin') ? userIdFromToken : null;
+      const driverId = role === 'driver' ? userIdFromToken : null;
 
       const notification = await notificationService.markNotificationAsRead(
         parseInt(id),
@@ -346,7 +365,11 @@ class NotificationController {
       }
 
       const { topic, tokens } = req.body;
-      const { userId, driverId } = req.user;
+      const { id, role } = req.user;
+      
+      // Map user data based on role
+      const userId = (role === 'user' || role === 'admin') ? id : null;
+      const driverId = role === 'driver' ? id : null;
 
       // If no tokens provided, use user's/driver's tokens
       let targetTokens = tokens;
@@ -398,7 +421,11 @@ class NotificationController {
       }
 
       const { topic, tokens } = req.body;
-      const { userId, driverId } = req.user;
+      const { id, role } = req.user;
+      
+      // Map user data based on role
+      const userId = (role === 'user' || role === 'admin') ? id : null;
+      const driverId = role === 'driver' ? id : null;
 
       // If no tokens provided, use user's/driver's tokens
       let targetTokens = tokens;
@@ -474,7 +501,11 @@ class NotificationController {
    */
   async getDeviceTokens(req, res) {
     try {
-      const { userId, driverId } = req.user;
+      const { id, role } = req.user;
+      
+      // Map user data based on role
+      const userId = (role === 'user' || role === 'admin') ? id : null;
+      const driverId = role === 'driver' ? id : null;
 
       const tokens = await DeviceToken.findAll({
         where: {

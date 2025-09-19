@@ -1,7 +1,7 @@
 const fcmService = require('./fcmService');
 const { DeviceToken, Notification, User, Driver, UserPreferences } = require('../models');
 const { generateNotificationContent, getNotificationPriority, getNotificationChannels } = require('../utils/notificationTemplates');
-const logger = require('../utils/logger');
+const { logger } = require('../utils/logger');
 
 class NotificationService {
   /**
@@ -239,6 +239,9 @@ class NotificationService {
    */
   async registerDeviceToken(userId, driverId, token, platform = 'android', deviceInfo = {}) {
     try {
+      // Debug logging
+      logger.info(`🔧 Service received - userId: ${userId}, driverId: ${driverId}, token: ${token?.substring(0, 20)}...`);
+      
       // Validate token with FCM (if available)
       if (fcmService.isAvailable()) {
         const isValid = await fcmService.validateToken(token);
@@ -248,19 +251,35 @@ class NotificationService {
       }
 
       // Deactivate old tokens for this user/driver
-      await DeviceToken.deactivateOldTokens(userId, driverId, token);
+      logger.info(`🔄 Deactivating old tokens for userId: ${userId}, driverId: ${driverId}`);
+      try {
+        const deactivateResult = await DeviceToken.deactivateOldTokens(userId, driverId, token);
+        logger.info(`✅ Deactivate result:`, deactivateResult);
+      } catch (deactivateError) {
+        logger.error(`❌ Deactivate error:`, deactivateError.message);
+        // Continue anyway - deactivation failure shouldn't block registration
+      }
 
       // Create or update token
+      logger.info(`🆕 Creating/finding token with userId: ${userId}, driverId: ${driverId}`);
+      logger.info(`📋 Defaults object: ${JSON.stringify({ userId, driverId, platform, deviceInfo })}`);
+      
+      // Clean up null values for Sequelize
+      const cleanDefaults = {
+        platform,
+        deviceInfo,
+        isActive: true,
+        lastUsed: new Date()
+      };
+      
+      if (userId) cleanDefaults.userId = userId;
+      if (driverId) cleanDefaults.driverId = driverId;
+      
+      logger.info(`🧹 Clean defaults object: ${JSON.stringify(cleanDefaults)}`);
+      
       const [deviceToken, created] = await DeviceToken.findOrCreate({
         where: { token },
-        defaults: {
-          userId,
-          driverId,
-          platform,
-          deviceInfo,
-          isActive: true,
-          lastUsed: new Date()
-        }
+        defaults: cleanDefaults
       });
 
       if (!created) {

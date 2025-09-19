@@ -1,6 +1,6 @@
 const admin = require('firebase-admin');
 const { DeviceToken } = require('../models');
-const logger = require('../utils/logger');
+const { logger } = require('../utils/logger');
 
 class FCMService {
   constructor() {

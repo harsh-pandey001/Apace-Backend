@@ -122,9 +122,17 @@ DeviceToken.findActiveTokensForDriver = function(driverId) {
 DeviceToken.deactivateOldTokens = async function(userId = null, driverId = null, currentToken = null) {
   const whereClause = { isActive: true };
   
+  // Ensure at least one of userId or driverId is provided
+  if (!userId && !driverId) {
+    console.log('⚠️ No userId or driverId provided to deactivateOldTokens, skipping...');
+    return { count: 0 };
+  }
+  
   if (userId) whereClause.userId = userId;
   if (driverId) whereClause.driverId = driverId;
   if (currentToken) whereClause.token = { [sequelize.Sequelize.Op.ne]: currentToken };
+  
+  console.log('🔍 deactivateOldTokens whereClause:', whereClause);
   
   return this.update(
     { isActive: false },

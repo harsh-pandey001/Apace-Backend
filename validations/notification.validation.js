@@ -160,13 +160,13 @@ const markAsReadValidation = [
 const sendTestNotificationValidation = [
   body('userId')
     .optional()
-    .isInt({ min: 1 })
-    .withMessage('User ID must be a positive integer'),
+    .isUUID()
+    .withMessage('User ID must be a valid UUID'),
   
   body('driverId')
     .optional()
-    .isInt({ min: 1 })
-    .withMessage('Driver ID must be a positive integer'),
+    .isUUID()
+    .withMessage('Driver ID must be a valid UUID'),
   
   body()
     .custom((value) => {
