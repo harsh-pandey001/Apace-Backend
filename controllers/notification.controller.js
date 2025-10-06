@@ -154,10 +154,13 @@ class NotificationController {
 
       const results = [];
 
+      // Admin notification types that use title/body directly
+      const adminNotificationTypes = ['general', 'system_announcement', 'service_update', 'emergency_alert', 'maintenance_notice'];
+
       // Send to users
       for (const userId of userIds) {
         try {
-          const templateData = type === 'general' ? { title, body } : data;
+          const templateData = adminNotificationTypes.includes(type) ? { title, body } : data;
           const result = await notificationService.sendToUser(userId, type, templateData, data);
           results.push({ userId, ...result });
         } catch (error) {
@@ -168,7 +171,7 @@ class NotificationController {
       // Send to drivers
       for (const driverId of driverIds) {
         try {
-          const templateData = type === 'general' ? { title, body } : data;
+          const templateData = adminNotificationTypes.includes(type) ? { title, body } : data;
           const result = await notificationService.sendToDriver(driverId, type, templateData, data);
           results.push({ driverId, ...result });
         } catch (error) {
