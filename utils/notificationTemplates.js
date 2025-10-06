@@ -149,6 +149,43 @@ const notificationTemplates = {
       type: 'general',
       ...customData
     })
+  },
+
+  // Admin notification types
+  system_announcement: {
+    title: (data) => data.title,
+    body: (data) => data.body,
+    data: (customData) => ({
+      type: 'system_announcement',
+      ...customData
+    })
+  },
+
+  service_update: {
+    title: (data) => data.title,
+    body: (data) => data.body,
+    data: (customData) => ({
+      type: 'service_update',
+      ...customData
+    })
+  },
+
+  emergency_alert: {
+    title: (data) => data.title,
+    body: (data) => data.body,
+    data: (customData) => ({
+      type: 'emergency_alert',
+      ...customData
+    })
+  },
+
+  maintenance_notice: {
+    title: (data) => data.title,
+    body: (data) => data.body,
+    data: (customData) => ({
+      type: 'maintenance_notice',
+      ...customData
+    })
   }
 };
 
@@ -185,10 +222,13 @@ const generateNotificationContent = (type, templateData, additionalData = {}) =>
 
 // Helper function to get notification priority based on type
 const getNotificationPriority = (type) => {
-  const highPriorityTypes = ['cancelled', 'delayed', 'new_assignment', 'pickup_reminder'];
-  const lowPriorityTypes = ['payment_received', 'general'];
+  const urgentPriorityTypes = ['emergency_alert'];
+  const highPriorityTypes = ['cancelled', 'delayed', 'new_assignment', 'pickup_reminder', 'system_announcement'];
+  const lowPriorityTypes = ['payment_received', 'general', 'maintenance_notice'];
   
-  if (highPriorityTypes.includes(type)) {
+  if (urgentPriorityTypes.includes(type)) {
+    return 'urgent';
+  } else if (highPriorityTypes.includes(type)) {
     return 'high';
   } else if (lowPriorityTypes.includes(type)) {
     return 'low';

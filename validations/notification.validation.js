@@ -104,8 +104,8 @@ const sendNotificationValidation = [
   
   body('priority')
     .optional()
-    .isIn(['low', 'normal', 'high'])
-    .withMessage('Priority must be one of: low, normal, high'),
+    .isIn(['low', 'normal', 'high', 'urgent'])
+    .withMessage('Priority must be one of: low, normal, high, urgent'),
   
   body('channels')
     .optional()
