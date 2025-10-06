@@ -47,8 +47,8 @@ const sendNotificationValidation = [
     .isArray()
     .withMessage('User IDs must be an array')
     .custom((value) => {
-      if (value && value.some(id => !Number.isInteger(id) || id <= 0)) {
-        throw new Error('All user IDs must be positive integers');
+      if (value && value.some(id => typeof id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id))) {
+        throw new Error('All user IDs must be valid UUIDs');
       }
       return true;
     }),
@@ -58,8 +58,8 @@ const sendNotificationValidation = [
     .isArray()
     .withMessage('Driver IDs must be an array')
     .custom((value) => {
-      if (value && value.some(id => !Number.isInteger(id) || id <= 0)) {
-        throw new Error('All driver IDs must be positive integers');
+      if (value && value.some(id => typeof id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id))) {
+        throw new Error('All driver IDs must be valid UUIDs');
       }
       return true;
     }),
@@ -79,7 +79,11 @@ const sendNotificationValidation = [
       'new_assignment',
       'pickup_reminder',
       'payment_received',
-      'general'
+      'general',
+      'system_announcement',
+      'service_update',
+      'emergency_alert',
+      'maintenance_notice'
     ])
     .withMessage('Invalid notification type'),
   
@@ -146,7 +150,11 @@ const notificationHistoryValidation = [
       'new_assignment',
       'pickup_reminder',
       'payment_received',
-      'general'
+      'general',
+      'system_announcement',
+      'service_update',
+      'emergency_alert',
+      'maintenance_notice'
     ])
     .withMessage('Invalid notification type filter')
 ];

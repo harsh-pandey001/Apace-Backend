@@ -407,6 +407,11 @@ const startServer = async () => {
       const notificationService = require('./services/notificationService');
       await notificationService.initialize();
       logger.info('Notification service initialized');
+
+      // Initialize notification retry service
+      const notificationRetryService = require('./services/notificationRetryService');
+      notificationRetryService.start();
+      logger.info('Notification retry service started');
     } catch (error) {
       logger.warn('Notification service failed to initialize, continuing without FCM:', error.message);
     }

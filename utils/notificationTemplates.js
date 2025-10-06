@@ -2,7 +2,7 @@ const notificationTemplates = {
   // Customer notifications
   booking_confirmed: {
     title: 'Booking Confirmed',
-    body: (data) => `Your booking #${data.shipmentId} has been confirmed for pickup at ${data.pickupTime || 'scheduled time'}`,
+    body: (data) => `Your booking has been confirmed for pickup at ${data.pickupAddress} at ${data.pickupTime || 'scheduled time'}`,
     data: (shipment) => ({
       type: 'booking_confirmed',
       shipmentId: shipment.id,
@@ -29,7 +29,7 @@ const notificationTemplates = {
 
   pickup_completed: {
     title: 'Pickup Completed',
-    body: (data) => `Your shipment #${data.shipmentId} has been picked up and is on the way to ${data.deliveryAddress}`,
+    body: (data) => `Your shipment has been picked up and is on the way to ${data.deliveryAddress}`,
     data: (shipment) => ({
       type: 'pickup_completed',
       shipmentId: shipment.id,
@@ -40,7 +40,7 @@ const notificationTemplates = {
 
   in_transit: {
     title: 'In Transit',
-    body: (data) => `Your shipment #${data.shipmentId} is on the way. Estimated arrival: ${data.estimatedArrival || 'within scheduled time'}`,
+    body: (data) => `Your shipment is on the way to ${data.deliveryAddress}. Estimated arrival: ${data.estimatedArrival || 'within scheduled time'}`,
     data: (shipment) => ({
       type: 'in_transit',
       shipmentId: shipment.id,
@@ -51,7 +51,7 @@ const notificationTemplates = {
 
   out_for_delivery: {
     title: 'Out for Delivery',
-    body: (data) => `Your shipment #${data.shipmentId} is out for delivery and will arrive in approximately ${data.eta} minutes`,
+    body: (data) => `Your shipment is out for delivery to ${data.deliveryAddress} and will arrive in approximately ${data.eta} minutes`,
     data: (shipment, eta = 30) => ({
       type: 'out_for_delivery',
       shipmentId: shipment.id,
@@ -63,7 +63,7 @@ const notificationTemplates = {
 
   delivered: {
     title: 'Delivered Successfully',
-    body: (data) => `Your shipment #${data.shipmentId} has been delivered successfully to ${data.deliveryAddress}`,
+    body: (data) => `Your shipment has been delivered successfully to ${data.deliveryAddress}`,
     data: (shipment) => ({
       type: 'delivered',
       shipmentId: shipment.id,
@@ -75,10 +75,12 @@ const notificationTemplates = {
 
   cancelled: {
     title: 'Shipment Cancelled',
-    body: (data) => `Your shipment #${data.shipmentId} has been cancelled. ${data.reason || 'Please contact customer support for details.'}`,
+    body: (data) => `Your shipment from ${data.pickupAddress} to ${data.deliveryAddress} has been cancelled. ${data.reason || 'Please contact customer support for details.'}`,
     data: (shipment, reason) => ({
       type: 'cancelled',
       shipmentId: shipment.id,
+      pickupAddress: shipment.pickupAddress,
+      deliveryAddress: shipment.deliveryAddress,
       reason: reason,
       refundInfo: shipment.refundInfo
     })
@@ -86,10 +88,11 @@ const notificationTemplates = {
 
   delayed: {
     title: 'Delivery Delayed',
-    body: (data) => `Your shipment #${data.shipmentId} is delayed by approximately ${data.delayMinutes} minutes due to ${data.reason}`,
+    body: (data) => `Your delivery to ${data.deliveryAddress} is delayed by approximately ${data.delayMinutes} minutes due to ${data.reason}`,
     data: (shipment, delayMinutes, reason) => ({
       type: 'delayed',
       shipmentId: shipment.id,
+      deliveryAddress: shipment.deliveryAddress,
       delayMinutes: delayMinutes,
       reason: reason,
       newEstimatedTime: shipment.newEstimatedTime
@@ -128,7 +131,7 @@ const notificationTemplates = {
 
   payment_received: {
     title: 'Payment Received',
-    body: (data) => `Payment of ₹${data.amount} received for shipment #${data.shipmentId}. Thank you!`,
+    body: (data) => `Payment of ₹${data.amount} received for your shipment. Thank you!`,
     data: (shipment, amount) => ({
       type: 'payment_received',
       shipmentId: shipment.id,

@@ -25,6 +25,7 @@ import {
   Help,
   Info,
   DirectionsCar as VehicleIcon,
+  Notifications as NotificationsIcon,
 } from '@mui/icons-material';
 import userService from '../services/userService';
 import { getLast24HoursShipmentsCount } from '../services/shipmentService';
@@ -55,6 +56,12 @@ const getMenuItems = (usersBadge, shipmentsBadge, documentsBadge) => [
     icon: <DocumentIcon />, 
     path: '/driver-documents',
     badge: documentsBadge > 0 ? documentsBadge : null, // Pending documents
+  },
+  { 
+    text: 'Notifications', 
+    icon: <NotificationsIcon />, 
+    path: '/notifications',
+    badge: null,
   },
   { 
     text: 'Vehicle Pricing', 
