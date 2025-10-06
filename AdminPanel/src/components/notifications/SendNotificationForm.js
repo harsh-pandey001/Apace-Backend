@@ -133,7 +133,7 @@ const SendNotificationForm = ({ showSnackbar, onSuccess }) => {
     }));
   };
 
-  const handleSectionToggle = (section) => (event, isExpanded) => {
+  const handleSectionToggle = (section) => (_, isExpanded) => {
     setExpandedSections(prev => ({
       ...prev,
       [section]: isExpanded
@@ -216,7 +216,13 @@ const SendNotificationForm = ({ showSnackbar, onSuccess }) => {
         }
       });
       
-      const { successful, failed, total } = response.data.data;
+      const { successful, failed, total, results } = response.data.data;
+      
+      // Check if notifications were created in database but failed due to FCM
+      const fcmUnavailableCount = results.filter(result => 
+        result.notification && result.notification.id && 
+        result.results?.push?.error === 'FCM not available'
+      ).length;
       
       if (successful > 0) {
         showSnackbar(
@@ -229,8 +235,20 @@ const SendNotificationForm = ({ showSnackbar, onSuccess }) => {
         if (onSuccess) {
           onSuccess();
         }
+      } else if (fcmUnavailableCount > 0) {
+        // All notifications saved to database but FCM not configured
+        showSnackbar(
+          `${fcmUnavailableCount} notification${fcmUnavailableCount > 1 ? 's' : ''} saved to database. Push delivery requires FCM configuration.`,
+          'info'
+        );
+        
+        handleClearForm();
+        
+        if (onSuccess) {
+          onSuccess();
+        }
       } else {
-        showSnackbar('Failed to send any notifications', 'error');
+        showSnackbar('Failed to create notifications', 'error');
       }
       
     } catch (error) {

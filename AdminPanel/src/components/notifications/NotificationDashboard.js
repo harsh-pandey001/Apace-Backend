@@ -104,8 +104,11 @@ const RealServiceHealth = ({ onRefresh }) => {
         </List>
         
         {fcmStatus?.fcm?.error && (
-          <Alert severity="warning" sx={{ mt: 2 }}>
-            FCM Error: {fcmStatus.fcm.error}
+          <Alert severity="info" sx={{ mt: 2 }}>
+            <Typography variant="subtitle2">FCM Configuration Required</Typography>
+            <Typography variant="body2">
+              Push notifications are saved to database but require Firebase Cloud Messaging setup for delivery to devices.
+            </Typography>
           </Alert>
         )}
         

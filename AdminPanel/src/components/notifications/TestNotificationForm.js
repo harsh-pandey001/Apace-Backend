@@ -92,7 +92,16 @@ const TestNotificationForm = ({ showSnackbar }) => {
       });
       
       setResult(response.data);
-      showSnackbar('Test notification sent successfully!', 'success');
+      
+      // Check if notification was created but FCM failed
+      if (response.data.success === false && 
+          response.data.results?.push?.error === 'FCM not available') {
+        showSnackbar('Test notification saved to database. Push delivery requires FCM configuration.', 'info');
+      } else if (response.data.success) {
+        showSnackbar('Test notification sent successfully!', 'success');
+      } else {
+        showSnackbar('Test notification failed', 'warning');
+      }
       
     } catch (error) {
       console.error('Failed to send test notification:', error);
