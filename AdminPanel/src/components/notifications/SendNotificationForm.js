@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Paper,
@@ -22,16 +22,13 @@ import {
   Divider,
   List,
   ListItem,
-  ListItemText,
-  IconButton,
-  Tooltip
+  ListItemText
 } from '@mui/material';
 import {
   ExpandMore as ExpandMoreIcon,
   Send as SendIcon,
   Clear as ClearIcon,
   Add as AddIcon,
-  Delete as DeleteIcon,
   Preview as PreviewIcon
 } from '@mui/icons-material';
 
@@ -308,7 +305,12 @@ const SendNotificationForm = ({ showSnackbar, onSuccess }) => {
                       placeholder="Enter User ID"
                       value={userInput}
                       onChange={(e) => setUserInput(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddUserId())}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddUserId();
+                        }
+                      }}
                     />
                     <Button
                       variant="outlined"
@@ -341,7 +343,12 @@ const SendNotificationForm = ({ showSnackbar, onSuccess }) => {
                       placeholder="Enter Driver ID"
                       value={driverInput}
                       onChange={(e) => setDriverInput(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddDriverId())}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddDriverId();
+                        }
+                      }}
                     />
                     <Button
                       variant="outlined"
@@ -505,7 +512,7 @@ const SendNotificationForm = ({ showSnackbar, onSuccess }) => {
               type="submit"
               variant="contained"
               startIcon={loading ? <CircularProgress size={20} /> : <SendIcon />}
-              disabled={loading || formData.userIds.length === 0 && formData.driverIds.length === 0}
+              disabled={loading || (formData.userIds.length === 0 && formData.driverIds.length === 0)}
             >
               {loading ? 'Sending...' : 'Send Notification'}
             </Button>

@@ -12,52 +12,16 @@ import {
   ListItemIcon,
   ListItemText,
   IconButton,
-  Tooltip,
-  useTheme,
   Alert
 } from '@mui/material';
 import {
   Notifications as NotificationsIcon,
   CheckCircle as SuccessIcon,
-  Error as ErrorIcon,
-  Devices as DevicesIcon,
   Refresh as RefreshIcon,
   Storage as DatabaseIcon
 } from '@mui/icons-material';
 import axios from 'axios';
 
-// Real-time status component for essential services only
-const ServiceStatusCard = ({ title, status, details, icon, onRefresh }) => {
-  const theme = useTheme();
-  
-  return (
-    <Card sx={{ height: '100%' }}>
-      <CardContent sx={{ p: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            {icon}
-            <Typography variant="h6">{title}</Typography>
-          </Box>
-          <IconButton onClick={onRefresh} size="small">
-            <RefreshIcon />
-          </IconButton>
-        </Box>
-        
-        <Chip 
-          label={status ? 'Online' : 'Offline'}
-          color={status ? 'success' : 'error'}
-          sx={{ mb: 2 }}
-        />
-        
-        {details && (
-          <Typography variant="body2" color="textSecondary">
-            {details}
-          </Typography>
-        )}
-      </CardContent>
-    </Card>
-  );
-};
 
 // Real service health with actual API calls
 const RealServiceHealth = ({ onRefresh }) => {

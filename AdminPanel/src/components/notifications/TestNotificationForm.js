@@ -15,12 +15,7 @@ import {
   CircularProgress,
   Card,
   CardContent,
-  Chip,
-  Divider,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText
+  Chip
 } from '@mui/material';
 import {
   BugReport as TestIcon,
@@ -28,9 +23,7 @@ import {
   Person as PersonIcon,
   DriveEta as DriverIcon,
   CheckCircle as SuccessIcon,
-  Error as ErrorIcon,
-  Schedule as ScheduleIcon,
-  Devices as DevicesIcon
+  Error as ErrorIcon
 } from '@mui/icons-material';
 
 import axios from 'axios';

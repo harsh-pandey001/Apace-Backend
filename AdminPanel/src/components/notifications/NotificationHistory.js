@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Paper,
@@ -15,13 +15,11 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Button,
   Grid,
   Chip,
   IconButton,
   CircularProgress,
-  Alert,
-  useTheme
+  Alert
 } from '@mui/material';
 import {
   History as HistoryIcon,
@@ -35,7 +33,6 @@ import {
 import axios from 'axios';
 
 const NotificationHistory = ({ showSnackbar }) => {
-  const theme = useTheme();
   const [loading, setLoading] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -66,11 +63,7 @@ const NotificationHistory = ({ showSnackbar }) => {
     { value: 'system_announcement', label: 'System Announcement' }
   ];
 
-  useEffect(() => {
-    loadNotificationHistory();
-  }, [page, rowsPerPage, filters]);
-
-  const loadNotificationHistory = async () => {
+  const loadNotificationHistory = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -108,7 +101,11 @@ const NotificationHistory = ({ showSnackbar }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, rowsPerPage, filters, showSnackbar]);
+
+  useEffect(() => {
+    loadNotificationHistory();
+  }, [loadNotificationHistory]);
 
   const handleFilterChange = (field) => (event) => {
     setFilters(prev => ({

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Paper,
@@ -15,15 +15,13 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Button,
   Grid,
   Chip,
   IconButton,
   CircularProgress,
   Alert,
   Card,
-  CardContent,
-  useTheme
+  CardContent
 } from '@mui/material';
 import {
   Devices as DevicesIcon,
@@ -33,13 +31,11 @@ import {
   PhoneAndroid as AndroidIcon,
   PhoneIphone as IosIcon,
   Computer as WebIcon,
-  Delete as DeleteIcon,
-  Info as InfoIcon
+  Delete as DeleteIcon
 } from '@mui/icons-material';
 import axios from 'axios';
 
 const DeviceTokensManager = ({ showSnackbar }) => {
-  const theme = useTheme();
   const [loading, setLoading] = useState(false);
   const [tokens, setTokens] = useState([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -67,12 +63,7 @@ const DeviceTokensManager = ({ showSnackbar }) => {
     { value: 'inactive', label: 'Inactive' }
   ];
 
-  useEffect(() => {
-    loadDeviceTokens();
-    loadStatistics();
-  }, [page, rowsPerPage, filters]);
-
-  const loadDeviceTokens = async () => {
+  const loadDeviceTokens = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -110,7 +101,7 @@ const DeviceTokensManager = ({ showSnackbar }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, rowsPerPage, filters, showSnackbar]);
 
   const loadStatistics = async () => {
     try {
@@ -130,6 +121,10 @@ const DeviceTokensManager = ({ showSnackbar }) => {
       setStatistics(null);
     }
   };
+
+  useEffect(() => {
+    loadDeviceTokens();
+  }, [loadDeviceTokens]);
 
   const handleFilterChange = (field) => (event) => {
     setFilters(prev => ({
