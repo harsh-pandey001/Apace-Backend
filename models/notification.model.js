@@ -50,7 +50,11 @@ const Notification = sequelize.define('Notification', {
       'new_assignment',
       'pickup_reminder',
       'payment_received',
-      'general'
+      'general',
+      'system_announcement',
+      'service_update',
+      'emergency_alert',
+      'maintenance_notice'
     ),
     allowNull: false
   },
@@ -102,7 +106,7 @@ const Notification = sequelize.define('Notification', {
     comment: 'Error message if notification failed'
   },
   priority: {
-    type: DataTypes.ENUM('low', 'normal', 'high'),
+    type: DataTypes.ENUM('low', 'normal', 'high', 'urgent'),
     allowNull: false,
     defaultValue: 'normal'
   },
