@@ -96,9 +96,11 @@ jobs:
             --set-env-vars REDIS_PASSWORD=ApaceRedis2025 \
             --set-env-vars CORS_ORIGIN=https://apace-admin-l5ucytvnga-uc.a.run.app \
             --set-env-vars FCM_ENABLED=true \
+            --set-env-vars FCM_PROJECT_ID=bright-meridian-465411-e2 \
             --service-account=86500976134-compute@developer.gserviceaccount.com \
             --timeout 300 \
-            --concurrency 80
+            --concurrency 80 \
+            --traffic-allocation=100
 
       - name: Get service URL
         run: |
@@ -127,7 +129,11 @@ jobs:
 
       - name: Promote to live traffic
         run: |
-          echo "Service deployed directly to live traffic"
+          echo "Ensuring 100% traffic allocation to latest revision..."
+          gcloud run services update-traffic ${{ env.SERVICE_NAME }} \
+            --to-latest \
+            --region ${{ env.REGION }}
+          echo "✅ Traffic successfully allocated to latest revision"
 
       - name: Cleanup old images
         run: |
