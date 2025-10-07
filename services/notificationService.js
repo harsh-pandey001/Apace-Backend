@@ -137,9 +137,14 @@ class NotificationService {
    */
   async sendPushNotification(userId, driverId, content, options = {}) {
     try {
+      // Ensure FCM is initialized before checking availability
       if (!fcmService.isAvailable()) {
-        logger.warn('FCM not available, skipping push notification');
-        return { success: false, error: 'FCM not available' };
+        logger.info('FCM service not available, attempting to initialize...');
+        const initialized = await fcmService.initialize();
+        if (!initialized) {
+          logger.warn('FCM initialization failed, skipping push notification');
+          return { success: false, error: 'FCM not available' };
+        }
       }
 
       // Get active device tokens
