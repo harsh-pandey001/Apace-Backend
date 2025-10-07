@@ -272,54 +272,54 @@ class NotificationMiddleware {
     };
 
     switch (notificationType) {
-      case 'shipment_picked_up':
-        return {
-          ...baseTemplate,
-          estimatedDeliveryTime: shipment.estimatedDeliveryDate ? 
-            new Date(shipment.estimatedDeliveryDate).toLocaleString() : 
-            'Within 2 hours',
-          transitStatus: 'Package has been picked up and is on the way'
-        };
+    case 'shipment_picked_up':
+      return {
+        ...baseTemplate,
+        estimatedDeliveryTime: shipment.estimatedDeliveryDate ? 
+          new Date(shipment.estimatedDeliveryDate).toLocaleString() : 
+          'Within 2 hours',
+        transitStatus: 'Package has been picked up and is on the way'
+      };
 
-      case 'shipment_in_transit':
-        return {
-          ...baseTemplate,
-          eta: '30-45 minutes',
-          currentLocation: 'En route to delivery address',
-          transitStatus: 'Package is out for delivery'
-        };
+    case 'shipment_in_transit':
+      return {
+        ...baseTemplate,
+        eta: '30-45 minutes',
+        currentLocation: 'En route to delivery address',
+        transitStatus: 'Package is out for delivery'
+      };
 
-      case 'shipment_delivered':
-        return {
-          ...baseTemplate,
-          deliveryTime: shipment.actualDeliveryDate ? 
-            new Date(shipment.actualDeliveryDate).toLocaleString() : 
-            currentTime.toLocaleString(),
-          deliveryConfirmation: 'Package successfully delivered',
-          price: shipment.price,
-          paymentStatus: shipment.paymentStatus || 'completed'
-        };
+    case 'shipment_delivered':
+      return {
+        ...baseTemplate,
+        deliveryTime: shipment.actualDeliveryDate ? 
+          new Date(shipment.actualDeliveryDate).toLocaleString() : 
+          currentTime.toLocaleString(),
+        deliveryConfirmation: 'Package successfully delivered',
+        price: shipment.price,
+        paymentStatus: shipment.paymentStatus || 'completed'
+      };
 
-      case 'shipment_cancelled':
-        return {
-          ...baseTemplate,
-          cancellationReason: shipment.cancellationReason || 'Cancelled by request',
-          refundInfo: 'Refund will be processed within 3-5 business days',
-          supportContact: 'Please contact support for assistance'
-        };
+    case 'shipment_cancelled':
+      return {
+        ...baseTemplate,
+        cancellationReason: shipment.cancellationReason || 'Cancelled by request',
+        refundInfo: 'Refund will be processed within 3-5 business days',
+        supportContact: 'Please contact support for assistance'
+      };
 
-      case 'shipment_delayed':
-        return {
-          ...baseTemplate,
-          delayReason: shipment.delayReason || 'Unexpected delay occurred',
-          newEstimatedTime: shipment.estimatedDeliveryDate ? 
-            new Date(new Date(shipment.estimatedDeliveryDate).getTime() + 60*60*1000).toLocaleString() :
-            'Updated ETA will be provided shortly',
-          apologyMessage: 'We apologize for any inconvenience caused'
-        };
+    case 'shipment_delayed':
+      return {
+        ...baseTemplate,
+        delayReason: shipment.delayReason || 'Unexpected delay occurred',
+        newEstimatedTime: shipment.estimatedDeliveryDate ? 
+          new Date(new Date(shipment.estimatedDeliveryDate).getTime() + 60*60*1000).toLocaleString() :
+          'Updated ETA will be provided shortly',
+        apologyMessage: 'We apologize for any inconvenience caused'
+      };
 
-      default:
-        return baseTemplate;
+    default:
+      return baseTemplate;
     }
   }
 
@@ -383,28 +383,28 @@ class NotificationMiddleware {
   static async handleSpecialStatusActions(shipment, newStatus, driver, user) {
     try {
       switch (newStatus) {
-        case 'delivered':
-          // Send payment confirmation to driver
-          if (driver?.id) {
-            await this.sendPaymentConfirmation(shipment, driver.id);
-          }
-          // Send delivery rating request to customer (after 5 minutes)
-          if (user?.id) {
-            setTimeout(() => {
-              this.sendRatingRequest(shipment, user.id);
-            }, 5 * 60 * 1000); // 5 minutes delay
-          }
-          break;
+      case 'delivered':
+        // Send payment confirmation to driver
+        if (driver?.id) {
+          await this.sendPaymentConfirmation(shipment, driver.id);
+        }
+        // Send delivery rating request to customer (after 5 minutes)
+        if (user?.id) {
+          setTimeout(() => {
+            this.sendRatingRequest(shipment, user.id);
+          }, 5 * 60 * 1000); // 5 minutes delay
+        }
+        break;
 
-        case 'delayed':
-          // Send apology and updated ETA
-          await this.sendDelayApology(shipment, user?.id, driver?.id);
-          break;
+      case 'delayed':
+        // Send apology and updated ETA
+        await this.sendDelayApology(shipment, user?.id, driver?.id);
+        break;
 
-        case 'cancelled':
-          // Send cancellation confirmation and refund info
-          await this.sendCancellationConfirmation(shipment, user?.id, driver?.id);
-          break;
+      case 'cancelled':
+        // Send cancellation confirmation and refund info
+        await this.sendCancellationConfirmation(shipment, user?.id, driver?.id);
+        break;
       }
     } catch (error) {
       logger.error('Failed to handle special status actions:', error);
@@ -777,19 +777,19 @@ class NotificationMiddleware {
           const { type, shipment, additionalParams = {} } = notificationData;
           
           switch (type) {
-            case 'shipment_created':
-              return await this.onShipmentCreated(shipment);
-            case 'driver_assigned':
-              return await this.onDriverAssigned(shipment, additionalParams.driverId);
-            case 'status_update':
-              return await this.onStatusUpdate(shipment, additionalParams.oldStatus, additionalParams.newStatus);
-            case 'pickup_reminder':
-              return await this.sendPickupReminder(shipment, additionalParams.driverId, additionalParams.minutesUntilPickup);
-            case 'payment_reminder':
-              return await this.sendPaymentReminder(shipment, additionalParams.recipientType);
-            default:
-              logger.warn(`Unknown notification type: ${type}`);
-              return { success: false, error: 'Unknown notification type' };
+          case 'shipment_created':
+            return await this.onShipmentCreated(shipment);
+          case 'driver_assigned':
+            return await this.onDriverAssigned(shipment, additionalParams.driverId);
+          case 'status_update':
+            return await this.onStatusUpdate(shipment, additionalParams.oldStatus, additionalParams.newStatus);
+          case 'pickup_reminder':
+            return await this.sendPickupReminder(shipment, additionalParams.driverId, additionalParams.minutesUntilPickup);
+          case 'payment_reminder':
+            return await this.sendPaymentReminder(shipment, additionalParams.recipientType);
+          default:
+            logger.warn(`Unknown notification type: ${type}`);
+            return { success: false, error: 'Unknown notification type' };
           }
         })
       );

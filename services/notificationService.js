@@ -259,9 +259,9 @@ class NotificationService {
       logger.info(`🔄 Deactivating old tokens for userId: ${userId}, driverId: ${driverId}`);
       try {
         const deactivateResult = await DeviceToken.deactivateOldTokens(userId, driverId, token);
-        logger.info(`✅ Deactivate result:`, deactivateResult);
+        logger.info('✅ Deactivate result:', deactivateResult);
       } catch (deactivateError) {
-        logger.error(`❌ Deactivate error:`, deactivateError.message);
+        logger.error('❌ Deactivate error:', deactivateError.message);
         // Continue anyway - deactivation failure shouldn't block registration
       }
 

@@ -27,7 +27,7 @@ class NotificationRetryService {
       await this.processFailedNotifications();
     }, {
       scheduled: true,
-      timezone: "UTC"
+      timezone: 'UTC'
     });
 
     // Cleanup old notifications daily at 2 AM
@@ -35,7 +35,7 @@ class NotificationRetryService {
       await this.cleanupOldNotifications();
     }, {
       scheduled: true,
-      timezone: "UTC"
+      timezone: 'UTC'
     });
 
     logger.info('Notification retry service started successfully');

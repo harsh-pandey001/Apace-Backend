@@ -51,9 +51,9 @@ class NotificationController {
       }
 
       // Debug logging
-      logger.info(`📱 JWT User data:`, req.user);
+      logger.info('📱 JWT User data:', req.user);
       logger.info(`📱 Registering token for user: ${targetUserId}, driver: ${targetDriverId}, role: ${role}`);
-      logger.info(`📱 About to call registerDeviceToken with:`, {
+      logger.info('📱 About to call registerDeviceToken with:', {
         targetUserId,
         targetDriverId,
         token: token?.substring(0, 20) + '...',
