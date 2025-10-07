@@ -402,6 +402,77 @@ class NotificationService {
   }
 
   /**
+   * Delete a specific notification
+   */
+  async deleteNotification(notificationId, userId = null, driverId = null) {
+    try {
+      const whereCondition = {
+        id: notificationId
+      };
+
+      // Add user/driver filter for security
+      if (userId) {
+        whereCondition.userId = userId;
+      }
+      if (driverId) {
+        whereCondition.driverId = driverId;
+      }
+
+      const deleted = await Notification.destroy({
+        where: whereCondition
+      });
+
+      if (deleted > 0) {
+        logger.info(`Notification ${notificationId} deleted for user: ${userId}, driver: ${driverId}`);
+        return true;
+      } else {
+        logger.warn(`Notification ${notificationId} not found or access denied`);
+        return false;
+      }
+
+    } catch (error) {
+      logger.error('Failed to delete notification:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete all notifications for a user/driver
+   */
+  async deleteAllNotifications(userId = null, driverId = null) {
+    try {
+      const whereCondition = {};
+
+      // Add user/driver filter
+      if (userId) {
+        whereCondition.userId = userId;
+      }
+      if (driverId) {
+        whereCondition.driverId = driverId;
+      }
+
+      if (!userId && !driverId) {
+        throw new Error('Either userId or driverId must be provided');
+      }
+
+      const deletedCount = await Notification.destroy({
+        where: whereCondition
+      });
+
+      logger.info(`Deleted ${deletedCount} notifications for user: ${userId}, driver: ${driverId}`);
+      return {
+        success: true,
+        deletedCount,
+        message: `${deletedCount} notifications deleted successfully`
+      };
+
+    } catch (error) {
+      logger.error('Failed to delete all notifications:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Get service status
    */
   getStatus() {

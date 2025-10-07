@@ -230,6 +230,13 @@ const unsubscribeFromTopicValidation = [
     })
 ];
 
+// Delete notification validation
+const deleteNotificationValidation = [
+  param('id')
+    .isInt({ min: 1 })
+    .withMessage('Notification ID must be a positive integer')
+];
+
 module.exports = {
   registerTokenValidation,
   removeTokenValidation,
@@ -238,5 +245,6 @@ module.exports = {
   markAsReadValidation,
   sendTestNotificationValidation,
   subscribeToTopicValidation,
-  unsubscribeFromTopicValidation
+  unsubscribeFromTopicValidation,
+  deleteNotificationValidation
 };

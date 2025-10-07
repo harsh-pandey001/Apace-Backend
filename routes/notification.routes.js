@@ -16,6 +16,8 @@ try {
     getDeviceTokens: controller.getDeviceTokens.bind(controller),
     getNotificationHistory: controller.getNotificationHistory.bind(controller),
     markAsRead: controller.markAsRead.bind(controller),
+    deleteNotification: controller.deleteNotification.bind(controller),
+    deleteAllNotifications: controller.deleteAllNotifications.bind(controller),
     subscribeToTopic: controller.subscribeToTopic.bind(controller),
     unsubscribeFromTopic: controller.unsubscribeFromTopic.bind(controller),
     getStatus: controller.getStatus.bind(controller),
@@ -33,6 +35,8 @@ try {
     getDeviceTokens: (req, res) => res.status(503).json({ success: false, message: 'Notification service temporarily unavailable' }),
     getNotificationHistory: (req, res) => res.status(503).json({ success: false, message: 'Notification service temporarily unavailable' }),
     markAsRead: (req, res) => res.status(503).json({ success: false, message: 'Notification service temporarily unavailable' }),
+    deleteNotification: (req, res) => res.status(503).json({ success: false, message: 'Notification service temporarily unavailable' }),
+    deleteAllNotifications: (req, res) => res.status(503).json({ success: false, message: 'Notification service temporarily unavailable' }),
     subscribeToTopic: (req, res) => res.status(503).json({ success: false, message: 'Notification service temporarily unavailable' }),
     unsubscribeFromTopic: (req, res) => res.status(503).json({ success: false, message: 'Notification service temporarily unavailable' }),
     getStatus: (req, res) => res.status(503).json({ success: false, message: 'Notification service temporarily unavailable' }),
@@ -58,7 +62,8 @@ try {
     markAsReadValidation: [],
     sendTestNotificationValidation: [],
     subscribeToTopicValidation: [],
-    unsubscribeFromTopicValidation: []
+    unsubscribeFromTopicValidation: [],
+    deleteNotificationValidation: []
   };
 }
 
@@ -70,7 +75,8 @@ const {
   markAsReadValidation,
   sendTestNotificationValidation,
   subscribeToTopicValidation,
-  unsubscribeFromTopicValidation
+  unsubscribeFromTopicValidation,
+  deleteNotificationValidation
 } = validations;
 
 // Middleware to check if user is authenticated
@@ -131,6 +137,27 @@ router.put('/:id/read',
   requireAuth, 
   markAsReadValidation, 
   notificationController.markAsRead
+);
+
+/**
+ * @route   DELETE /api/notifications/:id
+ * @desc    Delete a specific notification
+ * @access  Private (User/Driver)
+ */
+router.delete('/:id', 
+  requireAuth,
+  deleteNotificationValidation, 
+  notificationController.deleteNotification
+);
+
+/**
+ * @route   DELETE /api/notifications
+ * @desc    Delete all notifications for authenticated user/driver
+ * @access  Private (User/Driver)
+ */
+router.delete('/', 
+  requireAuth, 
+  notificationController.deleteAllNotifications
 );
 
 /**

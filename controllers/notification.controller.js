@@ -320,6 +320,77 @@ class NotificationController {
   }
 
   /**
+   * Delete a specific notification
+   */
+  async deleteNotification(req, res) {
+    try {
+      const { id } = req.params;
+      const { id: userIdFromToken, role } = req.user;
+      
+      // Map user data based on role
+      const userId = (role === 'user' || role === 'admin') ? userIdFromToken : null;
+      const driverId = role === 'driver' ? userIdFromToken : null;
+
+      const success = await notificationService.deleteNotification(
+        parseInt(id),
+        userId,
+        driverId
+      );
+
+      if (success) {
+        res.json({
+          success: true,
+          message: 'Notification deleted successfully'
+        });
+      } else {
+        res.status(404).json({
+          success: false,
+          message: 'Notification not found or access denied'
+        });
+      }
+
+    } catch (error) {
+      logger.error('Failed to delete notification:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to delete notification',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  }
+
+  /**
+   * Delete all notifications for authenticated user/driver
+   */
+  async deleteAllNotifications(req, res) {
+    try {
+      const { id: userIdFromToken, role } = req.user;
+      
+      // Map user data based on role
+      const userId = (role === 'user' || role === 'admin') ? userIdFromToken : null;
+      const driverId = role === 'driver' ? userIdFromToken : null;
+
+      const result = await notificationService.deleteAllNotifications(userId, driverId);
+
+      res.json({
+        success: true,
+        message: result.message,
+        data: {
+          deletedCount: result.deletedCount
+        }
+      });
+
+    } catch (error) {
+      logger.error('Failed to delete all notifications:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to delete all notifications',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  }
+
+  /**
    * Send a test notification
    */
   async sendTestNotification(req, res) {
