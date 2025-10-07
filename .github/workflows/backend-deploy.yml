@@ -99,8 +99,7 @@ jobs:
             --set-env-vars FCM_PROJECT_ID=bright-meridian-465411-e2 \
             --service-account=86500976134-compute@developer.gserviceaccount.com \
             --timeout 300 \
-            --concurrency 80 \
-            --traffic-allocation=100
+            --concurrency 80
 
       - name: Get service URL
         run: |
